@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="BattleReady.Api/BattleReady.Api.csproj" />
+  <Project Path="BattleReady.Console/BattleReady.Console.csproj" />
+  <Project Path="BattleReady.Core/BattleReady.Core.csproj" />
+</Solution>
