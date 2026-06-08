@@ -18,7 +18,7 @@ public class HitChanceController : ControllerBase
     [HttpPost("calculate")]
     public ActionResult<HitChance> Calculate([FromBody] HitChanceRequest request)
     {
-        var result = _service.Calculate(request.ToHit, request.Defense,
+        var result = _service.Calculate(request.ToHit ?? 0, request.Defense,
                                         request.Natural20Upgrades, request.Natural1Downgrades);
         return Ok(result);
     }
