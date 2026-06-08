@@ -4,7 +4,24 @@ using BattleReady.Features.Calculator.Models;
 
 public class CalculateResponseService
 {
-    
+
+    #region Injected Services
+
+    private readonly HitChanceService _hitChanceService;
+    private readonly ParseDamageService _parseDamageService;
+
+    #endregion
+
+    #region Constructor
+
+    public CalculateResponseService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
+    {
+        _hitChanceService = hitChanceService;
+        _parseDamageService = parseDamageService;
+    }
+
+    #endregion
+
     #region Private Static Methods
 
     private static List<AttackInput> EnsureUniqueAttackNumbers(IEnumerable<AttackInput> attacks)
@@ -22,31 +39,6 @@ public class CalculateResponseService
             result.Add(copy);
         }
         return result;
-    }
-
-    private static double DeriveAltDamage(double avgDmgNormalHit, string altAvgDmgExpression, double defaultAltAvgDmg = 0)
-    {
-        var normalizedExpression = altAvgDmgExpression.Trim().ToLower();
-        var halfKeywords = new[] { "half", "halved", "halve", "1/2", "50%" };
-        var doubleKeywords = new[] { "double", "doubled", "dbl", "2x", "200%" };
-        var tripleKeywords = new[] { "triple", "tripled", "trp", "3x", "300%" };
-        var zeroKeywords = new[] { "0", "zero", "none" };
-
-        bool isBlank = string.IsNullOrWhiteSpace(altAvgDmgExpression);
-        bool isHalf = halfKeywords.Contains(normalizedExpression);
-        bool isDouble = doubleKeywords.Contains(normalizedExpression);
-        bool isTriple = tripleKeywords.Contains(normalizedExpression);
-        bool isZero = zeroKeywords.Contains(normalizedExpression);
-        
-        if (isBlank) return defaultAltAvgDmg;        
-        if (isHalf) return avgDmgNormalHit / 2;
-        if (isDouble) return avgDmgNormalHit * 2;
-        if (isTriple) return avgDmgNormalHit * 3;
-        if (isZero) return 0;
-
-        var parseDamageService = new ParseDamageService();
-        var altDamageParseResult = parseDamageService.Calculate(altAvgDmgExpression);
-        return altDamageParseResult.AverageDamage;
     }
 
     private static AttackInput ApplyDefaults(AttackInput defaultAttack, AttackInput attack)
@@ -72,6 +64,34 @@ public class CalculateResponseService
 
     #endregion
 
+    #region Private Methods
+
+    private double DeriveAltDamage(double avgDmgNormalHit, string altAvgDmgExpression, double defaultAltAvgDmg = 0)
+    {
+        var normalizedExpression = altAvgDmgExpression.Trim().ToLower();
+        var halfKeywords = new[] { "half", "halved", "halve", "1/2", "50%" };
+        var doubleKeywords = new[] { "double", "doubled", "dbl", "2x", "200%" };
+        var tripleKeywords = new[] { "triple", "tripled", "trp", "3x", "300%" };
+        var zeroKeywords = new[] { "0", "zero", "none" };
+
+        bool isBlank = string.IsNullOrWhiteSpace(altAvgDmgExpression);
+        bool isHalf = halfKeywords.Contains(normalizedExpression);
+        bool isDouble = doubleKeywords.Contains(normalizedExpression);
+        bool isTriple = tripleKeywords.Contains(normalizedExpression);
+        bool isZero = zeroKeywords.Contains(normalizedExpression);
+        
+        if (isBlank) return defaultAltAvgDmg;        
+        if (isHalf) return avgDmgNormalHit / 2;
+        if (isDouble) return avgDmgNormalHit * 2;
+        if (isTriple) return avgDmgNormalHit * 3;
+        if (isZero) return 0;
+
+        var altDamageParseResult = _parseDamageService.Calculate(altAvgDmgExpression);
+        return altDamageParseResult.AverageDamage;
+    }
+
+    #endregion
+
     #region Public Methods
 
     public CalculationResponse Calculate(CalculationRequest request)
@@ -85,9 +105,6 @@ public class CalculateResponseService
         var sortedAttacks = EnsureUniqueAttackNumbers(request.Attacks)
                         .OrderBy(a => a.AttackNumber)
                         .ToList();
-
-        var hitChanceService = new HitChanceService();
-        var parseDamageService = new ParseDamageService();
 
         // Iterate through each attack and calculate results, building up the response as we go.
         foreach (var attack in sortedAttacks)
@@ -114,14 +131,14 @@ public class CalculateResponseService
             attackResult.EffectiveDefense = request.EnemyDefense;
 
             // Calculate chances for each degree of success based on to-hit and defense.
-            var hitChance = hitChanceService.Calculate(effectiveToHit, request.EnemyDefense, request.Natural20Upgrades, request.Natural1Downgrades);
+            var hitChance = _hitChanceService.Calculate(effectiveToHit, request.EnemyDefense, request.Natural20Upgrades, request.Natural1Downgrades);
             attackResult.CritHitChance = hitChance.CritHitChance;
             attackResult.NormalHitChance = hitChance.NormalHitChance;
             attackResult.NormalMissChance = hitChance.NormalMissChance;
             attackResult.CritMissChance = hitChance.CritMissChance;
 
             // Calculate average damage for each degree of success.
-            var normalDamageParseResult = parseDamageService.Calculate(effectiveAttack.NormalHitDamage);
+            var normalDamageParseResult = _parseDamageService.Calculate(effectiveAttack.NormalHitDamage);
             attackResult.AvgDmgNormalHit = normalDamageParseResult.AverageDamage;
             attackResult.AvgDmgCritHit = DeriveAltDamage(attackResult.AvgDmgNormalHit, effectiveAttack.CritHitDamage, attackResult.AvgDmgNormalHit * 2);
             double defaultAvgDmgNormalMiss = effectiveAttack.IsSpellRequiringSavingThrow ? attackResult.AvgDmgNormalHit / 2 : 0;

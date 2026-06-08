@@ -14,6 +14,12 @@ var request = new CalculationRequest
         new AttackInput { AttackNumber = 3, IsDefaultAttack = true },
     ]
 };
-var service = new CalculateResponseService();
-var response = service.Calculate(request);
+
+// Create services for dependency injection, then instantiate our main calculation service.
+var parseDamageService = new ParseDamageService();
+var hitChanceService = new HitChanceService();
+var calculateResponseService = new CalculateResponseService(hitChanceService, parseDamageService);
+
+// Call service and print out response.
+var response = calculateResponseService.Calculate(request);
 Console.WriteLine(response);
