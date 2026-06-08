@@ -1,6 +1,6 @@
 namespace BattleReady.Features.Calculator.Models;
 
-public class AttackResult
+public class AttackResponse
 {
 
     #region Properties

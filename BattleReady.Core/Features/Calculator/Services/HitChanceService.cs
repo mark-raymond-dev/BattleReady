@@ -7,7 +7,7 @@ public class HitChanceService
 
     #region Methods
 
-    public HitChance Calculate(int toHit, int defense, bool natural20Upgrades = true, bool natural1Downgrades = true)
+    public HitChanceResponse Calculate(int toHit, int defense, bool natural20Upgrades = true, bool natural1Downgrades = true)
     {
         // Loop through every possible d20 roll (1 to 20) and
         // count how many times each degree of success occurs.
@@ -27,7 +27,7 @@ public class HitChanceService
             }
         }
 
-        var hitChance = new HitChance
+        var hitChanceResponse = new HitChanceResponse
         {
             ToHit = toHit,
             Defense = defense,
@@ -37,7 +37,7 @@ public class HitChanceService
             NormalHitChance = hitCount * 0.05,
             CritHitChance = critHitCount * 0.05
         };
-        return hitChance;
+        return hitChanceResponse;
     }
 
     public static DegreeOfSuccess GetDegree(int toHit, int d20, int defense, bool natural20Upgrades = true, bool natural1Downgrades = true)

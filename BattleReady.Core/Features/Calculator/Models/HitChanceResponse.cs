@@ -1,6 +1,6 @@
 namespace BattleReady.Features.Calculator.Models;
 
-public class HitChance
+public class HitChanceResponse
 {
 
     #region Properties

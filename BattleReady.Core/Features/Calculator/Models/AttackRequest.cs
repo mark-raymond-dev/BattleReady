@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BattleReady.Features.Calculator.Models;
 
-public class AttackInput
+public class AttackRequest
 {
 
     #region Properties with DataAnnotations (e.g. Required or Validation)
@@ -33,7 +33,7 @@ public class AttackInput
 
     #region Methods
 
-    public AttackInput Clone() => new()
+    public AttackRequest Clone() => new()
     {
         AttackNumber                  = this.AttackNumber,
         IsDefaultAttack               = this.IsDefaultAttack,

@@ -7,8 +7,7 @@ public class CalculationResponse
 
     #region Properties
 
-    public CalculationRequest OriginalRequest { get; set; } = new();
-    public List<AttackResult> AttackResults { get; set; } = [];
+    public List<AttackResponse> AttackResponses { get; set; } = [];
     public double TotalExpectedDamageAllAttacks { get; set; }
     public DateTime CalculatedAt { get; init; } = DateTime.UtcNow;
 
@@ -20,7 +19,7 @@ public class CalculationResponse
     {
         var sb = new StringBuilder();
         sb.Append($"\n\nCalculated at {CalculatedAt:u}\n\n");
-        foreach (var ar in AttackResults.OrderBy(ar => ar.AttackNumber))
+        foreach (var ar in AttackResponses.OrderBy(ar => ar.AttackNumber))
         {
             sb.AppendLine($"Attack {ar.AttackNumber}  .....  Eff To-Hit: {ar.EffectiveToHit}, Defense: {ar.EffectiveDefense}");
             sb.AppendLine($"% Chc (Dmg) [ CritHit: {ar.CritHitChance:P2} ({ar.AvgDmgCritHit:F2}), Hit: {ar.NormalHitChance:P2} ({ar.AvgDmgNormalHit:F2}), Miss: {ar.NormalMissChance:P2} ({ar.AvgDmgNormalMiss:F2}), CritMiss: {ar.CritMissChance:P2} ({ar.AvgDmgCritMiss:F2}) ]");

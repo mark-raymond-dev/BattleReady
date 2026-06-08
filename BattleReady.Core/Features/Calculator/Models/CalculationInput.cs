@@ -1,23 +1,13 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace BattleReady.Features.Calculator.Models;
 
-public class CalculationRequest
+public class CalculationInput
 {
 
-    #region Properties with DataAnnotations (e.g. Required or Validation)
+    #region Properties
 
-    [Required]
-    [Range(1, 100, ErrorMessage = "EnemyDefense must be between 1 and 100.")]
     public int EnemyDefense { get; set; }
 
-    [Required]
-    [MinLength(1, ErrorMessage = "Attacks must include at least one attack.")]
     public List<AttackRequest> Attacks { get; set; } = [];
-
-    #endregion
-
-    #region Properties without DataAnnotations
 
     public string? CharacterName { get; set; } 
     public AttackRequest? DefaultAttack { get; set; } = null;

@@ -2,7 +2,7 @@ namespace BattleReady.Features.Calculator.Services;
 
 using BattleReady.Features.Calculator.Models;
 
-public class CalculateResponseService
+public class CalculateService
 {
 
     #region Injected Services
@@ -14,7 +14,7 @@ public class CalculateResponseService
 
     #region Constructor
 
-    public CalculateResponseService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
+    public CalculateService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
     {
         _hitChanceService = hitChanceService;
         _parseDamageService = parseDamageService;
@@ -24,9 +24,9 @@ public class CalculateResponseService
 
     #region Private Static Methods
 
-    private static List<AttackInput> EnsureUniqueAttackNumbers(IEnumerable<AttackInput> attacks)
+    private static List<AttackRequest> EnsureUniqueAttackNumbers(IEnumerable<AttackRequest> attacks)
     {
-        var result = new List<AttackInput>();
+        var result = new List<AttackRequest>();
         var seen = new HashSet<int>();
         int counter = 1;
         foreach (var attack in attacks)
@@ -41,9 +41,9 @@ public class CalculateResponseService
         return result;
     }
 
-    private static AttackInput ApplyDefaults(AttackInput defaultAttack, AttackInput attack)
+    private static AttackRequest ApplyDefaults(AttackRequest defaultAttack, AttackRequest attack)
     {
-        var effectiveAttack = new AttackInput
+        var effectiveAttack = new AttackRequest
         {
             AttackNumber = attack.AttackNumber,
             IsDefaultAttack = attack.IsDefaultAttack,
@@ -94,15 +94,12 @@ public class CalculateResponseService
 
     #region Public Methods
 
-    public CalculationResponse Calculate(CalculationRequest request)
+    public CalculationResponse Calculate(CalculationInput input)
     {
-        var response = new CalculationResponse
-        {
-             OriginalRequest = request
-        };
+        var response = new CalculationResponse();
 
         // Ensure Attack Numbers are Unique, then sort attacks by AttackNumber.
-        var sortedAttacks = EnsureUniqueAttackNumbers(request.Attacks)
+        var sortedAttacks = EnsureUniqueAttackNumbers(input.Attacks)
                         .OrderBy(a => a.AttackNumber)
                         .ToList();
 
@@ -110,10 +107,10 @@ public class CalculateResponseService
         foreach (var attack in sortedAttacks)
         {
             // Create effective attack, pulling in default values as needed.
-            var effectiveAttack = attack.IsDefaultAttack ? ApplyDefaults(request.DefaultAttack!, attack) : attack;            
+            var effectiveAttack = attack.IsDefaultAttack ? ApplyDefaults(input.DefaultAttack!, attack) : attack;            
 
             // Start building out the response for this attack.
-            var attackResult = new AttackResult
+            var attackResponse = new AttackResponse
             {
                 AttackNumber = effectiveAttack.AttackNumber
             };
@@ -127,38 +124,38 @@ public class CalculateResponseService
                 var totalMapAdjustment = mapAdjustment * attacksPastTheFirst;
                 effectiveToHit += totalMapAdjustment;
             }
-            attackResult.EffectiveToHit = effectiveToHit;
-            attackResult.EffectiveDefense = request.EnemyDefense;
+            attackResponse.EffectiveToHit = effectiveToHit;
+            attackResponse.EffectiveDefense = input.EnemyDefense;
 
             // Calculate chances for each degree of success based on to-hit and defense.
-            var hitChance = _hitChanceService.Calculate(effectiveToHit, request.EnemyDefense, request.Natural20Upgrades, request.Natural1Downgrades);
-            attackResult.CritHitChance = hitChance.CritHitChance;
-            attackResult.NormalHitChance = hitChance.NormalHitChance;
-            attackResult.NormalMissChance = hitChance.NormalMissChance;
-            attackResult.CritMissChance = hitChance.CritMissChance;
+            var hitChance = _hitChanceService.Calculate(effectiveToHit, input.EnemyDefense, input.Natural20Upgrades, input.Natural1Downgrades);
+            attackResponse.CritHitChance = hitChance.CritHitChance;
+            attackResponse.NormalHitChance = hitChance.NormalHitChance;
+            attackResponse.NormalMissChance = hitChance.NormalMissChance;
+            attackResponse.CritMissChance = hitChance.CritMissChance;
 
             // Calculate average damage for each degree of success.
             var normalDamageParseResult = _parseDamageService.Calculate(effectiveAttack.NormalHitDamage);
-            attackResult.AvgDmgNormalHit = normalDamageParseResult.AverageDamage;
-            attackResult.AvgDmgCritHit = DeriveAltDamage(attackResult.AvgDmgNormalHit, effectiveAttack.CritHitDamage, attackResult.AvgDmgNormalHit * 2);
-            double defaultAvgDmgNormalMiss = effectiveAttack.IsSpellRequiringSavingThrow ? attackResult.AvgDmgNormalHit / 2 : 0;
-            attackResult.AvgDmgNormalMiss = DeriveAltDamage(attackResult.AvgDmgNormalHit, effectiveAttack.NormalMissDamage, defaultAvgDmgNormalMiss);
-            attackResult.AvgDmgCritMiss = DeriveAltDamage(attackResult.AvgDmgNormalHit, effectiveAttack.CritMissDamage, 0);
+            attackResponse.AvgDmgNormalHit = normalDamageParseResult.AverageDamage;
+            attackResponse.AvgDmgCritHit = DeriveAltDamage(attackResponse.AvgDmgNormalHit, effectiveAttack.CritHitDamage, attackResponse.AvgDmgNormalHit * 2);
+            double defaultAvgDmgNormalMiss = effectiveAttack.IsSpellRequiringSavingThrow ? attackResponse.AvgDmgNormalHit / 2 : 0;
+            attackResponse.AvgDmgNormalMiss = DeriveAltDamage(attackResponse.AvgDmgNormalHit, effectiveAttack.NormalMissDamage, defaultAvgDmgNormalMiss);
+            attackResponse.AvgDmgCritMiss = DeriveAltDamage(attackResponse.AvgDmgNormalHit, effectiveAttack.CritMissDamage, 0);
 
             // Calculate total expected damage, considering all degrees of success,
             // their average damage, and their chances. Add to grand total as well.
-            attackResult.TotalExpectedDamage =
-                (attackResult.CritHitChance * attackResult.AvgDmgCritHit) +
-                (attackResult.NormalHitChance * attackResult.AvgDmgNormalHit) +
-                (attackResult.NormalMissChance * attackResult.AvgDmgNormalMiss) +
-                (attackResult.CritMissChance * attackResult.AvgDmgCritMiss);
+            attackResponse.TotalExpectedDamage =
+                (attackResponse.CritHitChance * attackResponse.AvgDmgCritHit) +
+                (attackResponse.NormalHitChance * attackResponse.AvgDmgNormalHit) +
+                (attackResponse.NormalMissChance * attackResponse.AvgDmgNormalMiss) +
+                (attackResponse.CritMissChance * attackResponse.AvgDmgCritMiss);
             
             // Add this attack's results to the response.
-            response.AttackResults.Add(attackResult);
+            response.AttackResponses.Add(attackResponse);
         }
 
         // Calculate grand total expected damage for all attacks.
-        response.TotalExpectedDamageAllAttacks = response.AttackResults.Sum(ar => ar.TotalExpectedDamage);
+        response.TotalExpectedDamageAllAttacks = response.AttackResponses.Sum(ar => ar.TotalExpectedDamage);
 
         return response;
     }

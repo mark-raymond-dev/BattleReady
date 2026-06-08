@@ -2,7 +2,7 @@ namespace BattleReady.Features.Calculator.Models;
 
 using System.Text.RegularExpressions;
 
-public class ParseDamage
+public class ParseDamageResponse
 {
 
     #region RegEx Patterns

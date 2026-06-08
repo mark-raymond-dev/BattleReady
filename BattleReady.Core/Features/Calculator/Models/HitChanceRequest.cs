@@ -7,7 +7,7 @@ public class HitChanceRequest
 
     #region Properties with DataAnnotations (e.g. Required or Validation)
 
-    // IMPORANT NOTE: When the JSON deserializer reads a request body
+    // IMPORTANT NOTE: When the JSON deserializer reads a request body
     // and a field like ToHit is missing entirely, it doesn't produce null.
     // It produces 0, because 0 is the default value of int.
     // If it is important to distinguish between a 0 generated from an omitted

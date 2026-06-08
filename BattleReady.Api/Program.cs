@@ -7,7 +7,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Register your services
-builder.Services.AddScoped<CalculateResponseService>();
+builder.Services.AddScoped<CalculateService>();
 builder.Services.AddScoped<HitChanceService>();
 builder.Services.AddScoped<ParseDamageService>();
 

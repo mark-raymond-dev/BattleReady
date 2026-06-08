@@ -16,9 +16,14 @@ public class ParseDamageController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public ActionResult<ParseDamage> Calculate([FromBody] ParseDamageRequest request)
+    public ActionResult<ParseDamageResponse> Calculate([FromBody] ParseDamageRequest request)
     {
-        var result = _service.Calculate(request.Expression);
-        return Ok(result);
+        // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
+        // The controller is the natural translation layer between HTTP concerns and domain concerns.
+
+        var response = _service.Calculate(
+            request.Expression
+            );
+        return Ok(response);
     }
 }
