@@ -2,6 +2,9 @@ using BattleReady.Core.Features.Calculator.Models;
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Api.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
+using BattleReady.Data;
+using BattleReady.Data.Entities;
+using System.Text.Json;
 
 namespace BattleReady.Api.Controllers;
 
@@ -10,14 +13,16 @@ namespace BattleReady.Api.Controllers;
 public class HitChanceController : ControllerBase
 {
     private readonly HitChanceService _service;
+    private readonly AppDbContext _db;
 
-    public HitChanceController(HitChanceService service)
+    public HitChanceController(HitChanceService service, AppDbContext db)
     {
         _service = service;
+        _db = db;
     }
 
     [HttpPost("calculate")]
-    public ActionResult<HitChanceResponse> Calculate([FromBody] HitChanceRequest request)
+    public async Task<ActionResult<HitChanceResponse>> Calculate([FromBody] HitChanceRequest request)
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
@@ -31,6 +36,15 @@ public class HitChanceController : ControllerBase
             request.Natural20Upgrades, 
             request.Natural1Downgrades
             );
+
+        await _db.ApiRequestLogs.AddAsync(new ApiRequestLog
+        {
+            Endpoint = "POST /api/HitChance/calculate",
+            RequestBody = JsonSerializer.Serialize(request),
+            ResponseStatus = 200
+        });
+        await _db.SaveChangesAsync();
+
         return Ok(response);
     }
 }
