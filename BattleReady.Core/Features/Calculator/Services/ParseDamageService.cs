@@ -8,8 +8,8 @@ public class ParseDamageService
 
     #region RegEx Patterns
 
-    public static readonly Regex FlatPattern = new(@"^(\d+)(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
-    public static readonly Regex DicePattern = new(@"^(\d*)d(\d+)([+-]\d+)?(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
+    private static readonly Regex FlatPattern = new(@"^(\d+)(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
+    private static readonly Regex DicePattern = new(@"^(\d*)d(\d+)([+-]\d+)?(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
 
     #endregion
 
