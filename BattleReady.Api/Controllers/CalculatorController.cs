@@ -2,9 +2,9 @@ using BattleReady.Core.Features.Calculator.Models;
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Api.Models.Requests;
 using BattleReady.Api.Mapping;
+using Microsoft.AspNetCore.Mvc;
 using BattleReady.Data;
 using BattleReady.Data.Entities;
-using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
 namespace BattleReady.Api.Controllers;
@@ -33,6 +33,7 @@ public class CalculatorController : ControllerBase
         {
             Endpoint = "POST /api/Calculator/calculate",
             RequestBody = JsonSerializer.Serialize(request),
+            ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
         });
         await _db.SaveChangesAsync();

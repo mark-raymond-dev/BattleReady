@@ -41,6 +41,7 @@ public class HitChanceController : ControllerBase
         {
             Endpoint = "POST /api/HitChance/calculate",
             RequestBody = JsonSerializer.Serialize(request),
+            ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
         });
         await _db.SaveChangesAsync();

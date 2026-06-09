@@ -38,6 +38,7 @@ public class ParseDamageController : ControllerBase
         {
             Endpoint = "POST /api/ParseDamage/calculate",
             RequestBody = JsonSerializer.Serialize(request),
+            ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
         });
         await _db.SaveChangesAsync();
