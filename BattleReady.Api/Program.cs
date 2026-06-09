@@ -1,4 +1,4 @@
-using BattleReady.Features.Calculator.Services;
+using BattleReady.Core.Features.Calculator.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

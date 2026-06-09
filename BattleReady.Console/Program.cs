@@ -1,5 +1,5 @@
-﻿using BattleReady.Features.Calculator.Models;
-using BattleReady.Features.Calculator.Services;
+﻿using BattleReady.Core.Features.Calculator.Models;
+using BattleReady.Core.Features.Calculator.Services;
 
 var input = new CalculationInput
 {
@@ -7,11 +7,11 @@ var input = new CalculationInput
     EnemyDefense = 19,
     Natural20Upgrades = false,
     Natural1Downgrades = false,
-    DefaultAttack = new AttackRequest { BaseToHit = 12, NormalHitDamage = "1d6+6 fire", CritHitDamage = "dbl", NormalMissDamage = "0", CritMissDamage = "0" },
+    DefaultAttack = new AttackInput { BaseToHit = 12, NormalHitDamage = "1d6+6 fire", CritHitDamage = "dbl", NormalMissDamage = "0", CritMissDamage = "0" },
     Attacks = [
-        new AttackRequest { AttackNumber = 1, IsDefaultAttack = true },
-        new AttackRequest { AttackNumber = 2, IsDefaultAttack = true },
-        new AttackRequest { AttackNumber = 3, IsDefaultAttack = true },
+        new AttackInput { AttackNumber = 1, IsDefaultAttack = true },
+        new AttackInput { AttackNumber = 2, IsDefaultAttack = true },
+        new AttackInput { AttackNumber = 3, IsDefaultAttack = true },
     ]
 };
 

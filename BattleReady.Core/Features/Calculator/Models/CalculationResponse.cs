@@ -1,4 +1,4 @@
-namespace BattleReady.Features.Calculator.Models;
+namespace BattleReady.Core.Features.Calculator.Models;
 
 using System.Text;
 

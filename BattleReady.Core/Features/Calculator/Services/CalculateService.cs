@@ -1,6 +1,6 @@
-namespace BattleReady.Features.Calculator.Services;
+namespace BattleReady.Core.Features.Calculator.Services;
 
-using BattleReady.Features.Calculator.Models;
+using BattleReady.Core.Features.Calculator.Models;
 
 public class CalculateService
 {
@@ -24,9 +24,9 @@ public class CalculateService
 
     #region Private Static Methods
 
-    private static List<AttackRequest> EnsureUniqueAttackNumbers(IEnumerable<AttackRequest> attacks)
+    private static List<AttackInput> EnsureUniqueAttackNumbers(IEnumerable<AttackInput> attacks)
     {
-        var result = new List<AttackRequest>();
+        var result = new List<AttackInput>();
         var seen = new HashSet<int>();
         int counter = 1;
         foreach (var attack in attacks)
@@ -41,9 +41,9 @@ public class CalculateService
         return result;
     }
 
-    private static AttackRequest ApplyDefaults(AttackRequest defaultAttack, AttackRequest attack)
+    private static AttackInput ApplyDefaults(AttackInput defaultAttack, AttackInput attack)
     {
-        var effectiveAttack = new AttackRequest
+        var effectiveAttack = new AttackInput
         {
             AttackNumber = attack.AttackNumber,
             IsDefaultAttack = attack.IsDefaultAttack,

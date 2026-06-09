@@ -1,4 +1,4 @@
-namespace BattleReady.Features.Calculator.Models;
+namespace BattleReady.Core.Features.Calculator.Models;
 
 public class CalculationInput
 {
@@ -7,10 +7,10 @@ public class CalculationInput
 
     public int EnemyDefense { get; set; }
 
-    public List<AttackRequest> Attacks { get; set; } = [];
+    public List<AttackInput> Attacks { get; set; } = [];
 
     public string? CharacterName { get; set; } 
-    public AttackRequest? DefaultAttack { get; set; } = null;
+    public AttackInput? DefaultAttack { get; set; } = null;
     public string? Notes { get; set; }
     public bool Natural20Upgrades { get; set; } = true;
     public bool Natural1Downgrades { get; set; } = true;

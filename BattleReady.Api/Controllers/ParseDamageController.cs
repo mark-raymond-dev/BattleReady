@@ -1,5 +1,6 @@
-using BattleReady.Features.Calculator.Models;
-using BattleReady.Features.Calculator.Services;
+using BattleReady.Core.Features.Calculator.Models;
+using BattleReady.Core.Features.Calculator.Services;
+using BattleReady.Api.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BattleReady.Api.Controllers;
@@ -20,6 +21,9 @@ public class ParseDamageController : ControllerBase
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
+
+        // We don't need to map the request object to a corresponding input object because
+        // the service doesn't take an object - it simply accepts a series of primitives.
 
         var response = _service.Calculate(
             request.Expression

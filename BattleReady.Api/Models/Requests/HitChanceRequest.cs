@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace BattleReady.Features.Calculator.Models;
+namespace BattleReady.Api.Models.Requests;
 
 public class HitChanceRequest
 {

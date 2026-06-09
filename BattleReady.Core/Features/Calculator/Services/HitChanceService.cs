@@ -1,6 +1,6 @@
-namespace BattleReady.Features.Calculator.Services;
+namespace BattleReady.Core.Features.Calculator.Services;
 
-using BattleReady.Features.Calculator.Models;
+using BattleReady.Core.Features.Calculator.Models;
 
 public class HitChanceService
 {

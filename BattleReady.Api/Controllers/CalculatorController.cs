@@ -1,6 +1,8 @@
-using BattleReady.Features.Calculator.Models;
-using BattleReady.Features.Calculator.Services;
+using BattleReady.Core.Features.Calculator.Models;
+using BattleReady.Core.Features.Calculator.Services;
+using BattleReady.Api.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
+using BattleReady.Api.Mapping;
 
 namespace BattleReady.Api.Controllers;
 
@@ -22,20 +24,10 @@ public class CalculatorController : ControllerBase
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
         
         // We are mapping CalculationRequest (API request model) to CalculationInput (domain-layer).
+        // Similiarly, we are mapping AttackRequest (API) to AttackInput (Core).
         // By doing this, we decouple Core from the API.
-        
-        var input = new CalculationInput
-        {
-            CharacterName = request.CharacterName,
-            EnemyDefense = request.EnemyDefense,
-            Attacks = request.Attacks,
-            DefaultAttack = request.DefaultAttack,
-            Notes = request.Notes,
-            Natural20Upgrades = request.Natural20Upgrades,
-            Natural1Downgrades = request.Natural1Downgrades
-        };
 
-        var response = _service.Calculate(input);
+        var response = _service.Calculate(request.ToInput());
         return Ok(response);        
     }
 }
