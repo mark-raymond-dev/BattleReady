@@ -27,7 +27,7 @@ public class HitChanceController : ControllerBase
 
         var response = _service.Calculate(
             request.ToHit ?? 0, 
-            request.Defense,
+            request.Defense ?? 0,
             request.Natural20Upgrades, 
             request.Natural1Downgrades
             );

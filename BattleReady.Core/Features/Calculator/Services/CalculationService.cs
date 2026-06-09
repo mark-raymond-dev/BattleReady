@@ -2,7 +2,7 @@ namespace BattleReady.Core.Features.Calculator.Services;
 
 using BattleReady.Core.Features.Calculator.Models;
 
-public class CalculateService
+public class CalculationService
 {
 
     #region Injected Services
@@ -14,7 +14,7 @@ public class CalculateService
 
     #region Constructor
 
-    public CalculateService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
+    public CalculationService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
     {
         _hitChanceService = hitChanceService;
         _parseDamageService = parseDamageService;

@@ -18,8 +18,9 @@ public class HitChanceRequest
     [Range(-20, 50, ErrorMessage ="ToHit must be between -20 and 50.")]
     public int? ToHit { get; set; }
     
+    [Required]
     [Range(1, 100, ErrorMessage = "Defense must be between 1 and 100.")]
-    public int Defense { get; set; }
+    public int? Defense { get; set; }
 
     #endregion
 

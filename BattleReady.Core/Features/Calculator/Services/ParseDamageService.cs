@@ -6,6 +6,13 @@ using BattleReady.Core.Features.Calculator.Models;
 public class ParseDamageService
 {
 
+    #region RegEx Patterns
+
+    public static readonly Regex FlatPattern = new(@"^(\d+)(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
+    public static readonly Regex DicePattern = new(@"^(\d*)d(\d+)([+-]\d+)?(?:\s+([a-zA-Z]+))?$", RegexOptions.Compiled);
+
+    #endregion
+
     #region Methods
 
     public ParseDamageResponse Calculate(string damageExpression)
@@ -27,7 +34,7 @@ public class ParseDamageService
         var normalizedDamageExpression = Regex.Replace(damageExpression.Trim().ToLower(), @"\s+", " ");
 
         // 1. Handle flat damage with optional damage type (e.g., "5" or "5 slashing")
-        var flatMatch = ParseDamageResponse.FlatPattern.Match(normalizedDamageExpression);
+        var flatMatch = FlatPattern.Match(normalizedDamageExpression);
         
         if (flatMatch.Success)
         {
@@ -45,7 +52,7 @@ public class ParseDamageService
 
         // 2. Handle dice expressions with optional damage type (e.g., "2d6+3 slashing" or "1d4")
         // Added anchors ^ and $ to ensure it matches the entire string accurately
-        var diceMatch = ParseDamageResponse.DicePattern.Match(normalizedDamageExpression);
+        var diceMatch = DicePattern.Match(normalizedDamageExpression);
         
         if (diceMatch.Success)
         {

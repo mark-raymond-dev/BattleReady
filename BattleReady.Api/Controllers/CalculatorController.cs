@@ -10,9 +10,9 @@ namespace BattleReady.Api.Controllers;
 [Route("api/[controller]")]
 public class CalculatorController : ControllerBase
 {
-    private readonly CalculateService _service;
+    private readonly CalculationService _service;
 
-    public CalculatorController(CalculateService service)
+    public CalculatorController(CalculationService service)
     {
         _service = service;
     }
@@ -20,12 +20,7 @@ public class CalculatorController : ControllerBase
     [HttpPost("calculate")]
     public ActionResult<CalculationResponse> Calculate([FromBody] CalculationRequest request)
     {
-        // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
-        // The controller is the natural translation layer between HTTP concerns and domain concerns.
-        
-        // We are mapping CalculationRequest (API request model) to CalculationInput (domain-layer).
-        // Similiarly, we are mapping AttackRequest (API) to AttackInput (Core).
-        // By doing this, we decouple Core from the API.
+        // Maps API request models to Core input models via extension methods in BattleReady.Api/Mapping/
 
         var response = _service.Calculate(request.ToInput());
         return Ok(response);        

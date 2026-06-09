@@ -18,8 +18,8 @@ var input = new CalculationInput
 // Create services for dependency injection, then instantiate our main calculation service.
 var parseDamageService = new ParseDamageService();
 var hitChanceService = new HitChanceService();
-var calculateService = new CalculateService(hitChanceService, parseDamageService);
+var calculationService = new CalculationService(hitChanceService, parseDamageService);
 
 // Call service and print out response.
-var response = calculateService.Calculate(input);
+var response = calculationService.Calculate(input);
 Console.WriteLine(response);
