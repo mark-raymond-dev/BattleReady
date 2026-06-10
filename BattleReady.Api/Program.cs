@@ -14,8 +14,15 @@ builder.Services.AddScoped<HitChanceService>();
 builder.Services.AddScoped<ParseDamageService>();
 
 // Register the DbContext
+// If a query fails mid-flight because the database went to sleep, EF Core 
+// will retry it automatically up to 3 times before giving up.
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null)));
 
 var app = builder.Build();
 
@@ -23,7 +30,19 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    try
+    {
+        // We put this in a try-catch as a safety precaution in case the database has not woken up yet.
+        // This way if the database is slow to wake up, the app still starts successfully and Swagger is
+        // accessible. The migration will run successfully on the next startup once both services are warm.
+        db.Database.Migrate();    
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Migration failed on startup. The database may be waking up.");
+    }
+    
 }
 
 app.UseSwagger();
