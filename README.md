@@ -1,7 +1,7 @@
 # BattleReady
 
 A Pathfinder 2e combat calculator that computes expected damage per round across multiple attacks.
-Built as a portfolio project to demonstrate ASP.NET Core REST API design, clean architecture, dependency injection, input validation, and unit testing.
+Built as a portfolio project to demonstrate modern .NET development practices including clean architecture, Entity Framework Core, REST API design, CI/CD, and both unit and integration testing.
 
 ---
 
@@ -16,11 +16,15 @@ BattleReady models a full attack sequence and calculates **expected damage per r
 - **Saving throw spells** — auto-applies half damage on a Miss and zero on a Critical Miss by default
 - **Default attack templates** — define a base attack once and reuse it across an entire sequence
 
+All API requests are logged to an Azure SQL Database, with a queryable log endpoint supporting filtering and pagination.
+
 ---
 
 ## Live Demo
 
 Swagger UI: [https://battleready-api-b4h4brhga5dea5ay.westus3-01.azurewebsites.net/swagger](https://battleready-api-b4h4brhga5dea5ay.westus3-01.azurewebsites.net/swagger)
+
+> **Note:** The API is hosted on Azure's Free F1 tier and may take 30–60 seconds to wake up after a period of inactivity.
 
 ---
 
@@ -28,7 +32,7 @@ Swagger UI: [https://battleready-api-b4h4brhga5dea5ay.westus3-01.azurewebsites.n
 
 ### `POST /api/Calculator/calculate`
 
-The primary endpoint. Submits a full attack sequence and receives per-attack breakdowns plus a grand total.
+The primary endpoint. Submits a full attack sequence and receives per-attack breakdowns plus a grand total. Logs each request to the database.
 
 **Example request:**
 
@@ -71,11 +75,10 @@ The primary endpoint. Submits a full attack sequence and receives per-attack bre
       "avgDmgNormalMiss": 0.0,
       "avgDmgCritMiss": 0.0,
       "totalExpectedDamage": 9.925
-    },
-    ...
+    }
   ],
   "totalExpectedDamageAllAttacks": 19.25,
-  "calculatedAt": "2025-01-01T00:00:00Z"
+  "calculatedAt": "2026-06-09T00:00:00Z"
 }
 ```
 
@@ -83,18 +86,13 @@ The primary endpoint. Submits a full attack sequence and receives per-attack bre
 
 ### `POST /api/HitChance/calculate`
 
-Calculates hit chance breakdown for a single attack roll against a single defense value.
+Calculates hit chance breakdown for a single attack roll. Logs each request to the database.
 
-**Example request:**
+### `GET /api/HitChance/calculate`
 
-```json
-{
-  "toHit": 12,
-  "defense": 19,
-  "natural20Upgrades": true,
-  "natural1Downgrades": true
-}
-```
+Same calculation as the POST version but read-only — no logging. Parameters are passed as query string values, making results bookmarkable and cacheable.
+
+**Example:** `/api/HitChance/calculate?toHit=12&defense=19&natural20Upgrades=true&natural1Downgrades=true`
 
 **Example response:**
 
@@ -103,8 +101,8 @@ Calculates hit chance breakdown for a single attack roll against a single defens
   "toHit": 12,
   "defense": 19,
   "critHitChance": 0.2,
-  "normalHitChance": 0.65,
-  "normalMissChance": 0.1,
+  "normalHitChance": 0.5,
+  "normalMissChance": 0.25,
   "critMissChance": 0.05
 }
 ```
@@ -113,17 +111,15 @@ Calculates hit chance breakdown for a single attack roll against a single defens
 
 ### `POST /api/ParseDamage/calculate`
 
-Parses a damage expression string and returns its components and average damage.
+Parses a damage expression string and returns its components and average damage. Logs each request to the database.
+
+### `GET /api/ParseDamage/calculate`
+
+Same calculation as the POST version but read-only — no logging, results are cacheable.
+
+**Example:** `/api/ParseDamage/calculate?expression=2d6%2B3+slashing`
 
 **Supported formats:** `5`, `5 slashing`, `2d6`, `d8+3`, `2d6+3 fire`, `1d4-1 piercing`
-
-**Example request:**
-
-```json
-{
-  "expression": "2d6+3 slashing"
-}
-```
 
 **Example response:**
 
@@ -138,6 +134,42 @@ Parses a damage expression string and returns its components and average damage.
   "parseStatus": "Parsed as slashing dice expression"
 }
 ```
+
+---
+
+### `GET /api/Logs`
+
+Returns a paginated list of API request logs with optional filtering.
+
+**Query parameters (all optional):**
+
+| Parameter | Description | Default |
+|---|---|---|
+| `endpoint` | Partial match filter on endpoint name | — |
+| `from` | Return logs on or after this date | — |
+| `to` | Return logs on or before this date | — |
+| `page` | Page number | 1 |
+| `pageSize` | Results per page | 10 |
+
+**Example:** `/api/Logs?endpoint=Calculator&page=1&pageSize=10`
+
+**Example response:**
+
+```json
+{
+  "page": 1,
+  "pageSize": 10,
+  "totalRecords": 42,
+  "totalPages": 5,
+  "records": [...]
+}
+```
+
+---
+
+### `GET /api/Logs/{id}`
+
+Returns a single log entry by ID. Returns `404 Not Found` if the ID does not exist.
 
 ---
 
@@ -165,45 +197,66 @@ BattleReady.slnx
 │       ├── Models/            # Input/response models, DegreeOfSuccess enum
 │       └── Services/          # CalculationService, HitChanceService, ParseDamageService
 ├── BattleReady.Api/           # ASP.NET Core Web API
-│   ├── Controllers/           # CalculatorController, HitChanceController, ParseDamageController
+│   ├── Controllers/           # CalculatorController, HitChanceController, ParseDamageController, LogsController
 │   ├── Mapping/               # Extension methods: *Request.ToInput()
 │   ├── Models/Requests/       # API request models with validation attributes
+│   ├── Models/Responses/      # LogsResponse with pagination metadata
 │   └── Program.cs
+├── BattleReady.Data/          # EF Core data access layer
+│   ├── Entities/              # ApiRequestLog entity
+│   ├── Migrations/            # EF Core migrations (auto-applied on startup)
+│   └── AppDbContext.cs
 ├── BattleReady.Console/       # Original console prototype
 └── BattleReady.Tests/         # xUnit test project
-    ├── HitChance/             # HitChanceServiceTests (13 tests)
-    └── ParseDamage/           # ParseDamageServiceTests (13 tests)
+    ├── HitChance/             # HitChanceServiceTests (13 unit tests)
+    ├── ParseDamage/           # ParseDamageServiceTests (13 unit tests)
+    └── Integration/           # Integration tests (9 tests) — full HTTP stack with in-memory database
 ```
 
-**Key design decisions:**
+---
 
-- `BattleReady.Core` has zero knowledge of the API layer — all ASP.NET concerns live in `BattleReady.Api`
-- Request models (`*Request`) live in the API layer with validation attributes; Core input models (`*Input`) are plain C# with no framework dependencies
-- Controllers map between them via extension methods in `Mapping/`
-- Services are registered as scoped and injected via constructor injection throughout
-- `[ApiController]` handles `ModelState` validation automatically — no manual checks in controllers
+## Key Design Decisions
+
+**Layer separation** — `BattleReady.Core` has zero knowledge of the API or database layers. Dependency arrows always point inward: Api → Core, Data → Core, never the reverse.
+
+**Request/Input separation** — Request models (`*Request`) live in the API layer with validation attributes. Core input models (`*Input`) are plain C# with no framework dependencies. Controllers map between them via extension methods in `Mapping/`.
+
+**GET vs POST** — The Calculator endpoint uses POST because it logs to the database on every call (side effect). The HitChance and ParseDamage endpoints offer both: POST with logging for stateful clients, GET without logging for pure read-only calculations. GET responses are marked cacheable with `[ResponseCache]`.
+
+**Auto-migrations** — `db.Database.Migrate()` runs on startup, so schema changes deploy automatically with the code. No manual SQL steps required.
+
+**Secure secrets** — The production connection string is stored as an Azure App Service environment variable, never in source code or `appsettings.json`.
+
+**CI/CD pipeline** — GitHub Actions builds, runs all 35 tests, and deploys on every push to `master`. A failing test blocks deployment.
 
 ---
 
 ## Running Locally
 
-**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/download)
+**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/download), SQL Server or SQL Server Express
 
 ```bash
 git clone https://github.com/mark-raymond-dev/BattleReady.git
 cd BattleReady
+```
+
+Add your local SQL Server connection string to `BattleReady.Api/appsettings.json`:
+
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Server=YOUR_INSTANCE;Database=BattleReadyDb;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+```
+
+Then run:
+
+```bash
 dotnet run --project BattleReady.Api
 ```
 
-Swagger UI will be available at `https://localhost:{port}/swagger`.
+The database and tables are created automatically on first run. Swagger UI will be available at `https://localhost:{port}/swagger`.
 
-To run the console prototype instead:
-
-```bash
-dotnet run --project BattleReady.Console
-```
-
-To run the unit tests:
+To run all tests:
 
 ```bash
 dotnet test
@@ -215,7 +268,8 @@ dotnet test
 
 - .NET 10 / C#
 - ASP.NET Core Web API
+- Entity Framework Core 10 with SQL Server
 - Swashbuckle (Swagger / OpenAPI)
-- xUnit
-- Azure App Service (Free F1 tier)
-- GitHub Actions (CI/CD — deploys on push to `master`)
+- xUnit (unit tests + integration tests via `WebApplicationFactory`)
+- Azure App Service (Free F1 tier) + Azure SQL Database (free offer)
+- GitHub Actions (CI/CD — builds, tests, and deploys on push to `master`)
