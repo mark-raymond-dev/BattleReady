@@ -48,4 +48,18 @@ public class HitChanceController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("calculate")]
+    [ResponseCache(Duration = 60)]
+    public ActionResult<HitChanceResponse> Get([FromQuery] HitChanceRequest request)
+    {
+        var response = _service.Calculate(
+            request.ToHit ?? 0,
+            request.Defense ?? 0,
+            request.Natural20Upgrades,
+            request.Natural1Downgrades
+            );
+
+        return Ok(response);
+    }
 }

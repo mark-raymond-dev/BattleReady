@@ -45,4 +45,15 @@ public class ParseDamageController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("calculate")]
+    [ResponseCache(Duration = 60)]
+    public ActionResult<ParseDamageResponse> Get([FromQuery] ParseDamageRequest request)
+    {
+        var response = _service.Calculate(
+            request.Expression
+            );
+
+        return Ok(response);
+    }
 }
