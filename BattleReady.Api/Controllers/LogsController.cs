@@ -1,6 +1,7 @@
 using BattleReady.Api.Models.Requests;
 using BattleReady.Api.Models.Responses;
 using BattleReady.Data;
+using BattleReady.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,5 +49,16 @@ public class LogsController : ControllerBase
             TotalPages = totalPages,
             Records = records
         });
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiRequestLog>> GetLog(int id)
+    {
+        var log = await _db.ApiRequestLogs.FindAsync(id);
+
+        if (log == null)
+            return NotFound();
+
+        return Ok(log);
     }
 }
