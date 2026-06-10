@@ -16,13 +16,16 @@ builder.Services.AddScoped<ParseDamageService>();
 // Register the DbContext
 // If a query fails mid-flight because the database went to sleep, EF Core 
 // will retry it automatically up to 3 times before giving up.
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
-            errorNumbersToAdd: null)));
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            sqlOptions => sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null)));
+}
 
 var app = builder.Build();
 
@@ -53,3 +56,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// This is a C# trick — it exposes Program as a
+// public partial class so the test project can reference it.
+// Without this line, WebApplicationFactory<Program> won't compile.
+public partial class Program { }
