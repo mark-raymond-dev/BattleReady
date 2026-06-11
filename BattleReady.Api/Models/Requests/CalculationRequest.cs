@@ -9,7 +9,7 @@ public class CalculationRequest
 
     [Required]
     [Range(1, 100, ErrorMessage = "EnemyDefense must be between 1 and 100.")]
-    public int EnemyDefense { get; set; }
+    public int? EnemyDefense { get; set; }
 
     [Required]
     [MinLength(1, ErrorMessage = "Attacks must include at least one attack.")]

@@ -8,7 +8,7 @@ public static class CalculationRequestExtensions
     public static CalculationInput ToInput(this CalculationRequest request) => new()
     {
         CharacterName      = request.CharacterName,
-        EnemyDefense       = request.EnemyDefense,
+        EnemyDefense       = request.EnemyDefense ?? 0,
         Natural20Upgrades  = request.Natural20Upgrades,
         Natural1Downgrades = request.Natural1Downgrades,
         Notes              = request.Notes,

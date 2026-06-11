@@ -8,8 +8,12 @@ public class CalculationResponse
     #region Properties
 
     public List<AttackResponse> AttackResponses { get; set; } = [];
+    
     public double TotalExpectedDamageAllAttacks { get; set; }
-    public DateTime CalculatedAt { get; init; } = DateTime.UtcNow;
+    
+    // Only "get" is used here, since we want this set when the
+    // object is constructed, and read-only past that point.
+    public DateTime CalculatedAt { get; } = DateTime.UtcNow;
 
     #endregion
 

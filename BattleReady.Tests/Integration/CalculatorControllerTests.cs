@@ -75,6 +75,7 @@ public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
 
         Assert.NotNull(log);
         Assert.Equal(200, log.ResponseStatus);
+        Assert.NotEmpty(log.ResponseBody);
     }
 
     [Fact]

@@ -20,7 +20,7 @@ public class ParseDamageService
         var response = new ParseDamageResponse
         {
             OriginalExpression = damageExpression,
-            AverageDamage = -1, // Default to -1 to indicate an error if parsing fails
+            AverageDamage = 0,
             ParseStatus = "Unparsed"
         };
 

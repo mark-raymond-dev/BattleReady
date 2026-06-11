@@ -30,22 +30,24 @@ if (!builder.Environment.IsEnvironment("Testing"))
 var app = builder.Build();
 
 // Auto-run migrations on startup
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        // We put this in a try-catch as a safety precaution in case the database has not woken up yet.
-        // This way if the database is slow to wake up, the app still starts successfully and Swagger is
-        // accessible. The migration will run successfully on the next startup once both services are warm.
-        db.Database.Migrate();    
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Migration failed on startup. The database may be waking up.");
-    }
-    
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        try
+        {
+            // We put this in a try-catch as a safety precaution in case the database has not woken up yet.
+            // This way if the database is slow to wake up, the app still starts successfully and Swagger is
+            // accessible. The migration will run successfully on the next startup once both services are warm.
+            db.Database.Migrate();    
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Migration failed on startup. The database may be waking up.");
+        }        
+    }    
 }
 
 app.UseSwagger();

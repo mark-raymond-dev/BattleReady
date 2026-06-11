@@ -14,7 +14,7 @@ public class ParseDamageServiceTests
     public void Calculate_ReturnsError_WhenExpressionIsEmpty()
     {
         var result = _service.Calculate(string.Empty);
-        Assert.Equal(-1, result.AverageDamage);
+        Assert.Equal(0, result.AverageDamage);
         Assert.Contains("Error", result.ParseStatus);
     }
 
@@ -22,7 +22,7 @@ public class ParseDamageServiceTests
     public void Calculate_ReturnsError_WhenExpressionIsWhitespace()
     {
         var result = _service.Calculate("   ");
-        Assert.Equal(-1, result.AverageDamage);
+        Assert.Equal(0, result.AverageDamage);
         Assert.Contains("Error", result.ParseStatus);
     }
 
@@ -30,7 +30,7 @@ public class ParseDamageServiceTests
     public void Calculate_ReturnsError_WhenExpressionIsInvalid()
     {
         var result = _service.Calculate("abc");
-        Assert.Equal(-1, result.AverageDamage);
+        Assert.Equal(0, result.AverageDamage);
         Assert.Contains("Error", result.ParseStatus);
     }
 

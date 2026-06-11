@@ -43,16 +43,19 @@ public class CalculationService
 
     private static AttackInput ApplyDefaults(AttackInput defaultAttack, AttackInput attack)
     {
+        // NOTE: This intentionally copies over (thus overwriting) all properties
+        // from the passed in default except for AttackNumber and IsDefaultAttack.
         var effectiveAttack = new AttackInput
         {
+            // Get these from the original object.
             AttackNumber = attack.AttackNumber,
             IsDefaultAttack = attack.IsDefaultAttack,
             
+            // Get these from the default.
             BaseToHit = defaultAttack.BaseToHit,
             HasMAP = defaultAttack.HasMAP,
             IsAgile = defaultAttack.IsAgile,
             IsSpellRequiringSavingThrow = defaultAttack.IsSpellRequiringSavingThrow,
-
             NormalHitDamage = defaultAttack.NormalHitDamage,
             CritHitDamage = defaultAttack.CritHitDamage,
             NormalMissDamage = defaultAttack.NormalMissDamage,
