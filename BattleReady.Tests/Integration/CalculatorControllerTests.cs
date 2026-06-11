@@ -7,12 +7,12 @@ using Xunit;
 
 namespace BattleReady.Tests.Integration;
 
-public class CalculatorControllerTests : IClassFixture<IntegrationTestFactory>
+public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
 {
     private readonly HttpClient _client;
-    private readonly IntegrationTestFactory _factory;
+    private readonly CalculatorTestFactory _factory;
 
-    public CalculatorControllerTests(IntegrationTestFactory factory)
+    public CalculatorControllerTests(CalculatorTestFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

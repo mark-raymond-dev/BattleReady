@@ -11,6 +11,13 @@ namespace BattleReady.Tests.Integration;
 
 public class IntegrationTestFactory : WebApplicationFactory<Program>
 {
+    private readonly string _dbName;
+
+    public IntegrationTestFactory(string dbName = "TestDb")
+    {
+        _dbName = dbName;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -24,7 +31,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
 
             services.AddDbContext<AppDbContext>(options =>
-                options.UseInMemoryDatabase("TestDb"));
+                options.UseInMemoryDatabase(_dbName));
         });
     }
 }

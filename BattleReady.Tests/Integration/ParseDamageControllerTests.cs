@@ -7,12 +7,12 @@ using Xunit;
 
 namespace BattleReady.Tests.Integration;
 
-public class ParseDamageControllerTests : IClassFixture<IntegrationTestFactory>
+public class ParseDamageControllerTests : IClassFixture<ParseDamageTestFactory>
 {
     private readonly HttpClient _client;
-    private readonly IntegrationTestFactory _factory;
+    private readonly ParseDamageTestFactory _factory;
 
-    public ParseDamageControllerTests(IntegrationTestFactory factory)
+    public ParseDamageControllerTests(ParseDamageTestFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

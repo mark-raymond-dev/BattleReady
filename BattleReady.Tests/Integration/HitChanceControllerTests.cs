@@ -7,12 +7,12 @@ using Xunit;
 
 namespace BattleReady.Tests.Integration;
 
-public class HitChanceControllerTests : IClassFixture<IntegrationTestFactory>
+public class HitChanceControllerTests : IClassFixture<HitChanceTestFactory>
 {
     private readonly HttpClient _client;
-    private readonly IntegrationTestFactory _factory;
+    private readonly HitChanceTestFactory _factory;
 
-    public HitChanceControllerTests(IntegrationTestFactory factory)
+    public HitChanceControllerTests(HitChanceTestFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
