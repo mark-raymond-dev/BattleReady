@@ -22,7 +22,9 @@ public class ParseDamageController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public async Task<ActionResult<ParseDamageResponse>> Calculate([FromBody] ParseDamageRequest request)
+    public async Task<ActionResult<ParseDamageResponse>> Calculate(
+        [FromBody] ParseDamageRequest request,
+        CancellationToken cancellationToken)
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
@@ -40,7 +42,7 @@ public class ParseDamageController : ControllerBase
             RequestBody = JsonSerializer.Serialize(request),
             ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
-        });
+        }, cancellationToken);
         await _db.SaveChangesAsync();
 
         return Ok(response);

@@ -22,7 +22,9 @@ public class HitChanceController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public async Task<ActionResult<HitChanceResponse>> Calculate([FromBody] HitChanceRequest request)
+    public async Task<ActionResult<HitChanceResponse>> Calculate(
+        [FromBody] HitChanceRequest request,
+        CancellationToken cancellationToken)
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
@@ -43,7 +45,7 @@ public class HitChanceController : ControllerBase
             RequestBody = JsonSerializer.Serialize(request),
             ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
-        });
+        }, cancellationToken);
         await _db.SaveChangesAsync();
 
         return Ok(response);

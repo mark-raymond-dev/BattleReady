@@ -23,7 +23,9 @@ public class CalculatorController : ControllerBase
     }
 
     [HttpPost("calculate")]
-    public async Task<ActionResult<CalculationResponse>> Calculate([FromBody] CalculationRequest request)
+    public async Task<ActionResult<CalculationResponse>> Calculate(
+        [FromBody] CalculationRequest request,
+        CancellationToken cancellationToken)
     {
         // Maps API request models to Core input models via extension methods in BattleReady.Api/Mapping/
 
@@ -35,7 +37,7 @@ public class CalculatorController : ControllerBase
             RequestBody = JsonSerializer.Serialize(request),
             ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
-        });
+        }, cancellationToken);
         await _db.SaveChangesAsync();
 
         return Ok(response);        
