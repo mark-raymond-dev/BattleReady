@@ -6,6 +6,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -40,6 +41,8 @@ else
 
 var app = builder.Build();
 
+app.UseExceptionHandler();  // used in conjunction with: builder.Services.AddProblemDetails();
+
 // Auto-run migrations on startup
 if (!app.Environment.IsEnvironment("Testing"))
 {
@@ -68,6 +71,9 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
+
+// Uncomment this line for a throw-away endpoint you can hit to see the difference between having ProblemDetails and not having it.
+app.MapGet("/throw", () => { throw new InvalidOperationException("This is a deliberate test exception for verifying Problem Details formatting."); });
 
 app.Run();
 
