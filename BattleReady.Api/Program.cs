@@ -1,6 +1,7 @@
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,16 @@ if (!builder.Environment.IsEnvironment("Testing"))
                 maxRetryCount: 3,
                 maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorNumbersToAdd: null)));
+    
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            builder.Configuration.GetConnectionString("DefaultConnection")!,
+            name: "sql-server",
+            failureStatus: HealthStatus.Degraded);
+}
+else
+{
+    builder.Services.AddHealthChecks();
 }
 
 var app = builder.Build();
@@ -56,6 +67,7 @@ app.UseSwaggerUI();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
 
