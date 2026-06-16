@@ -3,7 +3,7 @@ namespace BattleReady.Core.Features.Calculator.Services;
 using System.Text.RegularExpressions;
 using BattleReady.Core.Features.Calculator.Models;
 
-public class ParseDamageService
+public class ParseDamageService : IParseDamageService
 {
 
     #region RegEx Patterns

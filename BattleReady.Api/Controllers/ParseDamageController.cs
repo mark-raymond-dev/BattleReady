@@ -12,10 +12,10 @@ namespace BattleReady.Api.Controllers;
 [Route("api/[controller]")]
 public class ParseDamageController : ControllerBase
 {
-    private readonly ParseDamageService _service;
+    private readonly IParseDamageService _service;
     private readonly AppDbContext _db;
 
-    public ParseDamageController(ParseDamageService service, AppDbContext db)
+    public ParseDamageController(IParseDamageService service, AppDbContext db)
     {
         _service = service;
         _db = db;

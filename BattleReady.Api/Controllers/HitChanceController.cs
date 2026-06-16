@@ -12,10 +12,10 @@ namespace BattleReady.Api.Controllers;
 [Route("api/[controller]")]
 public class HitChanceController : ControllerBase
 {
-    private readonly HitChanceService _service;
+    private readonly IHitChanceService _service;
     private readonly AppDbContext _db;
 
-    public HitChanceController(HitChanceService service, AppDbContext db)
+    public HitChanceController(IHitChanceService service, AppDbContext db)
     {
         _service = service;
         _db = db;

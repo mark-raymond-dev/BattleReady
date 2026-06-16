@@ -2,19 +2,19 @@ namespace BattleReady.Core.Features.Calculator.Services;
 
 using BattleReady.Core.Features.Calculator.Models;
 
-public class CalculationService
+public class CalculationService : ICalculationService
 {
 
     #region Injected Services
 
-    private readonly HitChanceService _hitChanceService;
-    private readonly ParseDamageService _parseDamageService;
+    private readonly IHitChanceService _hitChanceService;
+    private readonly IParseDamageService _parseDamageService;
 
     #endregion
 
     #region Constructor
 
-    public CalculationService(HitChanceService hitChanceService, ParseDamageService parseDamageService)
+    public CalculationService(IHitChanceService hitChanceService, IParseDamageService parseDamageService)
     {
         _hitChanceService = hitChanceService;
         _parseDamageService = parseDamageService;

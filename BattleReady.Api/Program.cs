@@ -9,9 +9,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Register your services
-builder.Services.AddScoped<CalculationService>();
-builder.Services.AddScoped<HitChanceService>();
-builder.Services.AddScoped<ParseDamageService>();
+builder.Services.AddScoped<ICalculationService, CalculationService>();
+builder.Services.AddScoped<IHitChanceService, HitChanceService>();
+builder.Services.AddScoped<IParseDamageService, ParseDamageService>();
 
 // Register the DbContext
 // If a query fails mid-flight because the database went to sleep, EF Core 

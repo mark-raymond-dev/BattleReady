@@ -2,7 +2,7 @@ namespace BattleReady.Core.Features.Calculator.Services;
 
 using BattleReady.Core.Features.Calculator.Models;
 
-public class HitChanceService
+public class HitChanceService : IHitChanceService
 {
 
     #region Methods
@@ -17,8 +17,8 @@ public class HitChanceService
         int critHitCount = 0;
         for (int d20 = 1; d20 <= 20; d20++)
         {
-            var degree = GetDegree(toHit, d20, defense, natural20Upgrades, natural1Downgrades);
-            switch (degree)
+            var degreeOfSuccess = DegreeOfSuccessCalculator.GetDegreeOfSuccess(toHit, d20, defense, natural20Upgrades, natural1Downgrades);
+            switch (degreeOfSuccess)
             {
                 case DegreeOfSuccess.CriticalHit: critHitCount++; break;
                 case DegreeOfSuccess.Hit: hitCount++; break;
@@ -38,36 +38,6 @@ public class HitChanceService
             CritHitChance = critHitCount * 0.05
         };
         return hitChanceResponse;
-    }
-
-    public static DegreeOfSuccess GetDegree(int toHit, int d20, int defense, bool natural20Upgrades = true, bool natural1Downgrades = true)
-    {
-        // Determine total attack roll and target numbers for each degree of success.
-        int total = d20 + toHit;
-        int tgtCritHit = defense + 10;
-        int tgtNormHit = defense;
-        int tgtNormMiss = defense - 10;
-
-        // Determine the base degree of success.
-        var degree = DegreeOfSuccess.CriticalMiss; // default
-        if (total >= tgtCritHit)
-        {
-            degree = DegreeOfSuccess.CriticalHit;
-        }
-        else if (total >= tgtNormHit)
-        {
-            degree = DegreeOfSuccess.Hit;
-        }
-        else if (total >= tgtNormMiss)
-        {
-            degree = DegreeOfSuccess.Miss;
-        }
-
-        // Apply Nat 20 / 1 rule adjustments (if applicable).
-        if (natural20Upgrades && d20 == 20 && degree < DegreeOfSuccess.CriticalHit) degree++; // Upgrade on Natural 20
-        if (natural1Downgrades && d20 == 1 && degree > DegreeOfSuccess.CriticalMiss)  degree--; // Downgrade on Natural 1
-
-        return degree;
     }
 
     #endregion

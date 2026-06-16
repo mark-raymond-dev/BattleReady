@@ -13,10 +13,10 @@ namespace BattleReady.Api.Controllers;
 [Route("api/[controller]")]
 public class CalculatorController : ControllerBase
 {
-    private readonly CalculationService _service;
+    private readonly ICalculationService _service;
     private readonly AppDbContext _db;
 
-    public CalculatorController(CalculationService service, AppDbContext db)
+    public CalculatorController(ICalculationService service, AppDbContext db)
     {
         _service = service;
         _db = db;
