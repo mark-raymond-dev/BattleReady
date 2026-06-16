@@ -4,32 +4,23 @@ namespace BattleReady.Tests.ParseDamage;
 
 public class ParseDamageServiceTests
 {
+
+    // Use [Theory] when there are many cases of the same shape.
+    // It's a tool for collapsing genuine repetition, not a default for every test class.
+    
     private readonly ParseDamageService _service = new();
 
     // -------------------------------------------------------------------------
     // Empty / invalid input
     // -------------------------------------------------------------------------
 
-    [Fact]
-    public void Calculate_ReturnsError_WhenExpressionIsEmpty()
+    [Theory]
+    [InlineData("")]        // Calculate_ReturnsError_WhenExpressionIsEmpty
+    [InlineData("   ")]     // Calculate_ReturnsError_WhenExpressionIsWhitespace
+    [InlineData("abc")]     // Calculate_ReturnsError_WhenExpressionIsInvalid
+    public void Calculate_ReturnsError_ForInvalidExpressions(string expression)
     {
-        var result = _service.Calculate(string.Empty);
-        Assert.Equal(0, result.AverageDamage);
-        Assert.Contains("Error", result.ParseStatus);
-    }
-
-    [Fact]
-    public void Calculate_ReturnsError_WhenExpressionIsWhitespace()
-    {
-        var result = _service.Calculate("   ");
-        Assert.Equal(0, result.AverageDamage);
-        Assert.Contains("Error", result.ParseStatus);
-    }
-
-    [Fact]
-    public void Calculate_ReturnsError_WhenExpressionIsInvalid()
-    {
-        var result = _service.Calculate("abc");
+        var result = _service.Calculate(expression);
         Assert.Equal(0, result.AverageDamage);
         Assert.Contains("Error", result.ParseStatus);
     }
@@ -121,18 +112,12 @@ public class ParseDamageServiceTests
     // Case and whitespace tolerance
     // -------------------------------------------------------------------------
 
-    [Fact]
-    public void Calculate_IsCaseInsensitive()
+    [Theory]
+    [InlineData("2D6+3 SLASHING")]
+    [InlineData("  2d6+3   slashing  ")]
+    public void Calculate_NormalizesCaseAndWhitespace(string expression)
     {
-        var result = _service.Calculate("2D6+3 SLASHING");
-        Assert.Equal(10, result.AverageDamage);
-        Assert.Equal("slashing", result.DamageType);
-    }
-
-    [Fact]
-    public void Calculate_HandlesExtraWhitespace()
-    {
-        var result = _service.Calculate("  2d6+3   slashing  ");
+        var result = _service.Calculate(expression);
         Assert.Equal(10, result.AverageDamage);
         Assert.Equal("slashing", result.DamageType);
     }
