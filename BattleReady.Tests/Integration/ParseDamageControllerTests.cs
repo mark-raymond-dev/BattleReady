@@ -9,6 +9,10 @@ namespace BattleReady.Tests.Integration;
 
 public class ParseDamageControllerTests : IClassFixture<ParseDamageTestFactory>
 {
+    private const string Version = "v1";
+    private const string CalculateUrl = $"/api/{Version}/ParseDamage/calculate";
+    private const string LoggedEndpoint = $"POST {CalculateUrl}";
+
     private readonly HttpClient _client;
     private readonly ParseDamageTestFactory _factory;
 
@@ -23,7 +27,7 @@ public class ParseDamageControllerTests : IClassFixture<ParseDamageTestFactory>
     {
         var request = new ParseDamageRequest { Expression = "2d6+3 slashing" };
 
-        var response = await _client.PostAsJsonAsync("/api/ParseDamage/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -33,11 +37,11 @@ public class ParseDamageControllerTests : IClassFixture<ParseDamageTestFactory>
     {
         var request = new ParseDamageRequest { Expression = "2d6+3 slashing" };
 
-        await _client.PostAsJsonAsync("/api/ParseDamage/calculate", request);
+        await _client.PostAsJsonAsync(CalculateUrl, request);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == "POST /api/ParseDamage/calculate");
+        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == LoggedEndpoint);
 
         Assert.NotNull(log);
         Assert.Equal(200, log.ResponseStatus);
@@ -49,7 +53,7 @@ public class ParseDamageControllerTests : IClassFixture<ParseDamageTestFactory>
     {
         var request = new { };
 
-        var response = await _client.PostAsJsonAsync("/api/ParseDamage/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

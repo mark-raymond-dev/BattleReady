@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using BattleReady.Data;
 using BattleReady.Data.Entities;
 using System.Text.Json;
+using Asp.Versioning;
 
 namespace BattleReady.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class HitChanceController : ControllerBase
 {
     private readonly IHitChanceService _service;
@@ -41,12 +43,12 @@ public class HitChanceController : ControllerBase
 
         await _db.ApiRequestLogs.AddAsync(new ApiRequestLog
         {
-            Endpoint = "POST /api/HitChance/calculate",
+            Endpoint = "POST /api/v1/HitChance/calculate",     // be sure to set the version correctly here
             RequestBody = JsonSerializer.Serialize(request),
             ResponseBody = JsonSerializer.Serialize(response),
             ResponseStatus = 200
         }, cancellationToken);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(response);
     }

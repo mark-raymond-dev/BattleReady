@@ -9,6 +9,10 @@ namespace BattleReady.Tests.Integration;
 
 public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
 {
+    private const string Version = "v1";
+    private const string CalculateUrl = $"/api/{Version}/Calculator/calculate";
+    private const string LoggedEndpoint = $"POST {CalculateUrl}";
+
     private readonly HttpClient _client;
     private readonly CalculatorTestFactory _factory;
 
@@ -40,7 +44,7 @@ public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
             }
         };
 
-        var response = await _client.PostAsJsonAsync("/api/Calculator/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -67,11 +71,11 @@ public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
             }
         };
 
-        await _client.PostAsJsonAsync("/api/Calculator/calculate", request);
+        await _client.PostAsJsonAsync(CalculateUrl, request);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == "POST /api/Calculator/calculate");
+        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == LoggedEndpoint);
 
         Assert.NotNull(log);
         Assert.Equal(200, log.ResponseStatus);
@@ -83,7 +87,7 @@ public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
     {
         var request = new { };
 
-        var response = await _client.PostAsJsonAsync("/api/Calculator/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Compact;
+using Asp.Versioning;
 
 // Set up Serilog. The message levels are, in order:
 // Verbose, Debug, Information, Warning, Error, Fatal.
@@ -20,6 +21,19 @@ var builder = WebApplication.CreateBuilder(args);
 // If you comment out the Log.Logger ... lines above (e.g. to revert 
 // back to the default logging), you must also comment out this line.
 builder.Host.UseSerilog();
+
+// Adds versioning to our Apis
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1.0);        // if no version is specified in a request, treat it as v1.
+    options.AssumeDefaultVersionWhenUnspecified = true;     // conventional default - without this, an unversioned request would 400 outright
+    options.ReportApiVersions = true;                       // adds api-supported-versions response header so consumers (and Swagger) can discover what versions exist without guessing
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

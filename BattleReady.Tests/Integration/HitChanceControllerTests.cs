@@ -9,6 +9,10 @@ namespace BattleReady.Tests.Integration;
 
 public class HitChanceControllerTests : IClassFixture<HitChanceTestFactory>
 {
+    private const string Version = "v1";
+    private const string CalculateUrl = $"/api/{Version}/HitChance/calculate";
+    private const string LoggedEndpoint = $"POST {CalculateUrl}";
+
     private readonly HttpClient _client;
     private readonly HitChanceTestFactory _factory;
 
@@ -29,7 +33,7 @@ public class HitChanceControllerTests : IClassFixture<HitChanceTestFactory>
             Natural1Downgrades = true
         };
 
-        var response = await _client.PostAsJsonAsync("/api/HitChance/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -45,11 +49,11 @@ public class HitChanceControllerTests : IClassFixture<HitChanceTestFactory>
             Natural1Downgrades = true
         };
 
-        await _client.PostAsJsonAsync("/api/HitChance/calculate", request);
+        await _client.PostAsJsonAsync(CalculateUrl, request);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == "POST /api/HitChance/calculate");
+        var log = db.ApiRequestLogs.FirstOrDefault(x => x.Endpoint == LoggedEndpoint);
 
         Assert.NotNull(log);
         Assert.Equal(200, log.ResponseStatus);
@@ -61,7 +65,7 @@ public class HitChanceControllerTests : IClassFixture<HitChanceTestFactory>
     {
         var request = new { };
 
-        var response = await _client.PostAsJsonAsync("/api/HitChance/calculate", request);
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

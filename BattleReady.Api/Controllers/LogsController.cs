@@ -4,11 +4,13 @@ using BattleReady.Data;
 using BattleReady.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Asp.Versioning;
 
 namespace BattleReady.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class LogsController : ControllerBase
 {
     private readonly AppDbContext _db;
