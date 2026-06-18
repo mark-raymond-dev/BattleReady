@@ -2,8 +2,24 @@ using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Serilog;
+using Serilog.Formatting.Compact;
+
+// Set up Serilog. The message levels are, in order:
+// Verbose, Debug, Information, Warning, Error, Fatal.
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()                                     // ignores Verbose or Debug messages
+    .Enrich.FromLogContext()                                        // allows additional properties to be attached dynamically via LogContext.PushProperty(...)
+    .WriteTo.Console(new CompactJsonFormatter())                    // SINK 1: writes logs to console
+    .WriteTo.File(new CompactJsonFormatter(),                       // SINK 2: writes logs to file
+        "logs/log-.json", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// If you comment out the Log.Logger ... lines above (e.g. to revert 
+// back to the default logging), you must also comment out this line.
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -72,10 +88,14 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Uncomment this line for a throw-away endpoint you can hit to see the difference between having ProblemDetails and not having it.
-//app.MapGet("/throw", () => { throw new InvalidOperationException("This is a deliberate test exception for verifying Problem Details formatting."); });
-
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // This is a C# trick — it exposes Program as a
 // public partial class so the test project can reference it.
