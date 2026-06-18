@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BattleReady.Api.Models.Requests;
 
-public class AttackRequest
+public class AttackRequest : IValidatableObject
 {
 
     #region Properties with DataAnnotations (e.g. Required or Validation)
@@ -28,6 +28,19 @@ public class AttackRequest
     public string CritHitDamage { get; set; } = string.Empty; 
     public string NormalMissDamage { get; set; } = string.Empty; 
     public string CritMissDamage { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Validation
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // IsAgile has no meaning unless MAP is involved.
+        if (IsAgile && !HasMAP)
+            yield return new ValidationResult(
+                "IsAgile has no effect when HasMAP is false. Either set HasMAP to true, or set IsAgile to false.",
+                new[] { nameof(IsAgile), nameof(HasMAP) });
+    }
 
     #endregion
 

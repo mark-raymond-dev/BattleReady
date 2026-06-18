@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BattleReady.Api.Models.Requests;
 
-public class CalculationRequest
+public class CalculationRequest : IValidatableObject
 {
 
     #region Properties with DataAnnotations (e.g. Required or Validation)
@@ -24,6 +24,19 @@ public class CalculationRequest
     public string? Notes { get; set; }
     public bool Natural20Upgrades { get; set; } = true;
     public bool Natural1Downgrades { get; set; } = true;
+
+    #endregion
+
+    #region Validation
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Cannot have Attacks marked as using "default attack" if the DefaultAttack wasn't defined.
+        if (Attacks.Any(a => a.IsDefaultAttack) && DefaultAttack is null)
+            yield return new ValidationResult(
+                "DefaultAttack is required when any attack has IsDefaultAttack set to true.",
+                new[] { nameof(DefaultAttack) });
+    }
 
     #endregion
 
