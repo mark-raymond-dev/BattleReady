@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Compact;
 using Asp.Versioning;
+using BattleReady.Api.Filters;
 
 // Set up Serilog. The message levels are, in order:
 // Verbose, Debug, Information, Warning, Error, Fatal.
@@ -40,10 +41,13 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register your services
+// Register your services. This is essentially registering "recipes" with builder.Services. It's sort of 
+// like saying "if anyone ever asks for an ICalculationService, here's how to make one: construct a 
+// CalculationService." Nothing gets built yet at this point — you're just registering recipes.
 builder.Services.AddScoped<ICalculationService, CalculationService>();
 builder.Services.AddScoped<IHitChanceService, HitChanceService>();
 builder.Services.AddScoped<IParseDamageService, ParseDamageService>();
+builder.Services.AddScoped<RequestLoggingFilter>();
 
 // Register the DbContext
 // If a query fails mid-flight because the database went to sleep, EF Core 
@@ -69,6 +73,9 @@ else
     builder.Services.AddHealthChecks();
 }
 
+// This is the moment the recipe list gets turned into the actual container — a runtime object that hold
+// all those registrations and is capable of resolving them, meaning: given a requested type, look up its
+// recipe, construct it (recursively constructing anything it depends on too), and hand back the instance. 
 var app = builder.Build();
 
 app.UseExceptionHandler();  // used in conjunction with: builder.Services.AddProblemDetails();

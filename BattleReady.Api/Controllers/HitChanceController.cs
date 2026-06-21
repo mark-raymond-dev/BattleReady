@@ -1,10 +1,8 @@
 using BattleReady.Core.Features.Calculator.Models;
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Api.Models.Requests;
+using BattleReady.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
-using BattleReady.Data;
-using BattleReady.Data.Entities;
-using System.Text.Json;
 using Asp.Versioning;
 
 namespace BattleReady.Api.Controllers;
@@ -15,18 +13,15 @@ namespace BattleReady.Api.Controllers;
 public class HitChanceController : ControllerBase
 {
     private readonly IHitChanceService _service;
-    private readonly AppDbContext _db;
 
-    public HitChanceController(IHitChanceService service, AppDbContext db)
+    public HitChanceController(IHitChanceService service)
     {
         _service = service;
-        _db = db;
     }
 
     [HttpPost("calculate")]
-    public async Task<ActionResult<HitChanceResponse>> Calculate(
-        [FromBody] HitChanceRequest request,
-        CancellationToken cancellationToken)
+    [ServiceFilter(typeof(RequestLoggingFilter))] // we put this here instead of class level because we only want it to run for the POST method, not the GET method
+    public ActionResult<HitChanceResponse> Calculate([FromBody] HitChanceRequest request)
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
@@ -40,16 +35,6 @@ public class HitChanceController : ControllerBase
             request.Natural20Upgrades, 
             request.Natural1Downgrades
             );
-
-        await _db.ApiRequestLogs.AddAsync(new ApiRequestLog
-        {
-            Endpoint = "POST /api/v1/HitChance/calculate",     // be sure to set the version correctly here
-            RequestBody = JsonSerializer.Serialize(request),
-            ResponseBody = JsonSerializer.Serialize(response),
-            ResponseStatus = 200
-        }, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
-
         return Ok(response);
     }
 

@@ -1,10 +1,8 @@
 using BattleReady.Core.Features.Calculator.Models;
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Api.Models.Requests;
+using BattleReady.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
-using BattleReady.Data;
-using BattleReady.Data.Entities;
-using System.Text.Json;
 using Asp.Versioning;
 
 namespace BattleReady.Api.Controllers;
@@ -15,18 +13,15 @@ namespace BattleReady.Api.Controllers;
 public class ParseDamageController : ControllerBase
 {
     private readonly IParseDamageService _service;
-    private readonly AppDbContext _db;
 
-    public ParseDamageController(IParseDamageService service, AppDbContext db)
+    public ParseDamageController(IParseDamageService service)
     {
         _service = service;
-        _db = db;
     }
 
     [HttpPost("calculate")]
-    public async Task<ActionResult<ParseDamageResponse>> Calculate(
-        [FromBody] ParseDamageRequest request,
-        CancellationToken cancellationToken)
+    [ServiceFilter(typeof(RequestLoggingFilter))] // we put this here instead of class level because we only want it to run for the POST method, not the GET method
+    public ActionResult<ParseDamageResponse> Calculate([FromBody] ParseDamageRequest request)
     {
         // IMPORTANT NOTE:  Unpacking properties at the controller boundary like this is the preferred pattern.
         // The controller is the natural translation layer between HTTP concerns and domain concerns.
@@ -37,15 +32,6 @@ public class ParseDamageController : ControllerBase
         var response = _service.Calculate(
             request.Expression
             );
-
-        await _db.ApiRequestLogs.AddAsync(new ApiRequestLog
-        {
-            Endpoint = "POST /api/v1/ParseDamage/calculate",     // be sure to set the version correctly here
-            RequestBody = JsonSerializer.Serialize(request),
-            ResponseBody = JsonSerializer.Serialize(response),
-            ResponseStatus = 200
-        }, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(response);
     }
