@@ -88,9 +88,9 @@ public class LogsControllerTests : IClassFixture<LogsTestFactory>
         // ARRANGE
         //----------------
 
+        // Seed 3 log entries directly via the DB ... 2 for Calculator, 1 for HitChance
         string targetEndpoint  = "POST /api/v1/Calculator/calculate";
         string otherEndpoint   = "POST /api/v1/HitChance/calculate";
-
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -127,16 +127,17 @@ public class LogsControllerTests : IClassFixture<LogsTestFactory>
         // ARRANGE
         //----------------
 
+        // Seed 2 log entries directly via the DB ... 1 with older timestamp, 1 with more recent timestamp
+        string targetEndpoint  = "POST /api/v1/Calculator/calculate";
         var oldTimestamp    = DateTime.UtcNow.AddDays(-10);
         var recentTimestamp = DateTime.UtcNow.AddDays(-1);
         var filterFrom      = DateTime.UtcNow.AddDays(-5);  // should exclude the old record
-
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.ApiRequestLogs.AddRange(
-                new ApiRequestLog { Endpoint = "POST /api/v1/Calculator/calculate", Timestamp = oldTimestamp,    RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 },
-                new ApiRequestLog { Endpoint = "POST /api/v1/Calculator/calculate", Timestamp = recentTimestamp, RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 }
+                new ApiRequestLog { Endpoint = targetEndpoint, Timestamp = oldTimestamp,    RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 },
+                new ApiRequestLog { Endpoint = targetEndpoint, Timestamp = recentTimestamp, RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 }
             );
             await db.SaveChangesAsync();
         }
@@ -164,16 +165,17 @@ public class LogsControllerTests : IClassFixture<LogsTestFactory>
         // ARRANGE
         //----------------
 
+        // Seed 2 log entries directly via the DB ... 1 with older timestamp, 1 with more recent timestamp
+        string targetEndpoint  = "POST /api/v1/Calculator/calculate";
         var oldTimestamp    = DateTime.UtcNow.AddDays(-10);
         var recentTimestamp = DateTime.UtcNow.AddDays(-1);
         var filterTo        = DateTime.UtcNow.AddDays(-5);  // should exclude the recent record
-
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.ApiRequestLogs.AddRange(
-                new ApiRequestLog { Endpoint = "POST /api/v1/Calculator/calculate", Timestamp = oldTimestamp,    RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 },
-                new ApiRequestLog { Endpoint = "POST /api/v1/Calculator/calculate", Timestamp = recentTimestamp, RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 }
+                new ApiRequestLog { Endpoint = targetEndpoint, Timestamp = oldTimestamp,    RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 },
+                new ApiRequestLog { Endpoint = targetEndpoint, Timestamp = recentTimestamp, RequestBody = "{}", ResponseBody = "{}", ResponseStatus = 200 }
             );
             await db.SaveChangesAsync();
         }

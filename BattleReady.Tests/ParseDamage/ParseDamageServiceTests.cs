@@ -150,6 +150,7 @@ public class ParseDamageServiceTests
         Assert.Equal(0, result.DamageDieCount);
         Assert.Equal(6, result.DamageDieBase);
         Assert.Equal(0, result.DamageModifier);
+        Assert.Equal("untyped", result.DamageType);
     }
 
     [Fact]
