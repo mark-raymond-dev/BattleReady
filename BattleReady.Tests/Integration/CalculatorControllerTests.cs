@@ -91,4 +91,56 @@ public class CalculatorControllerTests : IClassFixture<CalculatorTestFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Calculate_IsAgileWithoutHasMAP_Returns400()
+    {
+        var request = new CalculationRequest
+        {
+            EnemyDefense = 19,
+            Natural20Upgrades = true,
+            Natural1Downgrades = true,
+            Attacks = new List<AttackRequest>
+            {
+                new AttackRequest
+                {
+                    AttackNumber     = 1,
+                    BaseToHit        = 12,
+                    NormalHitDamage  = "1d6+6",
+                    HasMAP           = false,   // IsAgile=true with HasMAP=false is the invalid combination
+                    IsAgile          = true
+                }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Calculate_IsDefaultAttackSetWithNoDefaultAttack_Returns400()
+    {
+        var request = new CalculationRequest
+        {
+            EnemyDefense = 19,
+            Natural20Upgrades = true,
+            Natural1Downgrades = true,
+            DefaultAttack = null,   // no default provided
+            Attacks = new List<AttackRequest>
+            {
+                new AttackRequest
+                {
+                    AttackNumber     = 1,
+                    BaseToHit        = 12,
+                    NormalHitDamage  = "1d6+6",
+                    IsDefaultAttack  = true     // but this attack wants to use one
+                }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync(CalculateUrl, request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

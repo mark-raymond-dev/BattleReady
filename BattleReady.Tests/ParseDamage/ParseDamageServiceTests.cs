@@ -121,4 +121,56 @@ public class ParseDamageServiceTests
         Assert.Equal(10, result.AverageDamage);
         Assert.Equal("slashing", result.DamageType);
     }
+
+    // -------------------------------------------------------------------------
+    // Edge cases
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void Calculate_ParsesDiceExpression_DblKeyword()
+    {
+        // "dbl" is an alternate double keyword — should be treated identically to "double"
+        // avg of 1d6 = (1+6)/2 = 3.5
+        var result = _service.Calculate("1d6");
+        var dblResult = _service.Calculate("dbl");
+
+        // "dbl" on its own is not a dice expression — it's a keyword that only has
+        // meaning in the context of CalculationService (as an alternate damage expression).
+        // ParseDamageService doesn't know about keywords, so "dbl" should parse as an error.
+        Assert.Equal(0, dblResult.AverageDamage);
+        Assert.Contains("Error", dblResult.ParseStatus);
+    }
+
+    [Fact]
+    public void Calculate_ParsesDiceExpression_ZeroDieCount()
+    {
+        // "0d6" — zero dice, no modifier. Should produce 0 average damage.
+        var result = _service.Calculate("0d6");
+        Assert.Equal(0, result.AverageDamage);
+        Assert.Equal(0, result.DamageDieCount);
+        Assert.Equal(6, result.DamageDieBase);
+        Assert.Equal(0, result.DamageModifier);
+    }
+
+    [Fact]
+    public void Calculate_ReturnsError_ForNegativeOnlyExpression()
+    {
+        // "-3" has no dice component and FlatPattern requires leading digits (no sign),
+        // so this expression cannot be parsed and should return an error.
+        var result = _service.Calculate("-3");
+        Assert.Equal(0, result.AverageDamage);
+        Assert.Contains("Error", result.ParseStatus);
+    }
+
+    [Fact]
+    public void Calculate_ParsesFlatDamage_ZeroModifier()
+    {
+        // "0" is valid flat damage — zero damage, untyped.
+        var result = _service.Calculate("0");
+        Assert.Equal(0, result.AverageDamage);
+        Assert.Equal(0, result.DamageDieCount);
+        Assert.Equal(0, result.DamageDieBase);
+        Assert.Equal(0, result.DamageModifier);
+        Assert.Equal("untyped", result.DamageType);
+    }    
 }

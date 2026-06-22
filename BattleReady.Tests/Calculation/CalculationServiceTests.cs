@@ -343,4 +343,155 @@ public class CalculationServiceTests
             s => s.Calculate(critMissDiceExp),
             Times.Exactly(1));
     }
+
+    [Fact]
+    public void Calculate_DuplicateAttackNumbers_AreRenumberedSequentially()
+    {
+        //----------------
+        // ARRANGE
+        //----------------
+
+        // Both attacks have AttackNumber = 1 — EnsureUniqueAttackNumbers should
+        // renumber the second one to 2, so MAP applies correctly.
+        int duplicateAttackNumber = 1;
+        int baseToHit = 10;
+        string normHitDiceExp = "1d6";
+
+        // With sequential numbering (1 and 2), MAP penalty on attack 2 = -5.
+        // expectedSecondToHit = 10 + (-5 * (2-1)) = 5
+        int expectedSecondToHit = 5;
+
+        _mockHitChanceService
+            .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(new HitChanceResponse());
+
+        _mockParseDamageService
+            .Setup(s => s.Calculate(It.IsAny<string>()))
+            .Returns(new ParseDamageResponse());
+
+        var input = new CalculationInput
+        {
+            EnemyDefense = 15,
+            Natural20Upgrades = true,
+            Natural1Downgrades = true,
+            Attacks = new List<AttackInput>
+            {
+                new AttackInput
+                {
+                    AttackNumber      = duplicateAttackNumber,
+                    BaseToHit         = baseToHit,
+                    HasMAP            = true,
+                    IsAgile           = false,
+                    NormalHitDamage   = normHitDiceExp,
+                    CritHitDamage     = "double",
+                    NormalMissDamage  = "0",
+                    CritMissDamage    = "0"
+                },
+                new AttackInput
+                {
+                    AttackNumber      = duplicateAttackNumber,   // intentional duplicate
+                    BaseToHit         = baseToHit,
+                    HasMAP            = true,
+                    IsAgile           = false,
+                    NormalHitDamage   = normHitDiceExp,
+                    CritHitDamage     = "double",
+                    NormalMissDamage  = "0",
+                    CritMissDamage    = "0"
+                }
+            }
+        };
+
+        //----------------
+        // ACT
+        //----------------
+
+        _service.Calculate(input);
+
+        //----------------
+        // ASSERT
+        //----------------
+
+        // If renumbering worked correctly, the second attack's effective to-hit
+        // will reflect MAP penalty from AttackNumber 2 (i.e. baseToHit - 5 = 5).
+        // If renumbering did NOT work, both attacks would be treated as AttackNumber 1
+        // and no MAP penalty would be applied to either — HitChanceService would be
+        // called twice with baseToHit (10) and never with expectedSecondToHit (5).
+        _mockHitChanceService.Verify(
+            s => s.Calculate(baseToHit, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
+            Times.Exactly(1));
+
+        _mockHitChanceService.Verify(
+            s => s.Calculate(expectedSecondToHit, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
+            Times.Exactly(1));
+    }
+
+    [Fact]
+    public void Calculate_AttackWithIsDefaultAttack_UsesPropertiesFromDefaultAttack()
+    {
+        //----------------
+        // ARRANGE
+        //----------------
+
+        // The attack itself has placeholder damage — the default should overwrite it.
+        string placeholderDamage    = "1d4";        // on the attack — should NOT be used
+        string defaultNormHitDamage = "2d6+5";      // on the default — should be used
+
+        _mockHitChanceService
+            .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(new HitChanceResponse());
+
+        _mockParseDamageService
+            .Setup(s => s.Calculate(It.IsAny<string>()))
+            .Returns(new ParseDamageResponse());
+
+        var input = new CalculationInput
+        {
+            EnemyDefense       = 15,
+            Natural20Upgrades  = true,
+            Natural1Downgrades = true,
+            DefaultAttack = new AttackInput
+            {
+                AttackNumber     = 0,
+                BaseToHit        = 12,
+                HasMAP           = true,
+                IsAgile          = false,
+                NormalHitDamage  = defaultNormHitDamage,
+                CritHitDamage    = "double",
+                NormalMissDamage = "0",
+                CritMissDamage   = "0"
+            },
+            Attacks = new List<AttackInput>
+            {
+                new AttackInput
+                {
+                    AttackNumber     = 1,
+                    IsDefaultAttack  = true,            // triggers ApplyDefaults
+                    NormalHitDamage  = placeholderDamage,
+                    CritHitDamage    = "double",
+                    NormalMissDamage = "0",
+                    CritMissDamage   = "0"
+                }
+            }
+        };
+
+        //----------------
+        // ACT
+        //----------------
+
+        _service.Calculate(input);
+
+        //----------------
+        // ASSERT
+        //----------------
+
+        // ApplyDefaults should have caused ParseDamageService to be called with
+        // the default's damage expression, not the attack's placeholder.
+        _mockParseDamageService.Verify(
+            s => s.Calculate(defaultNormHitDamage),
+            Times.Exactly(1));
+
+        _mockParseDamageService.Verify(
+            s => s.Calculate(placeholderDamage),
+            Times.Never());
+    }
 }
