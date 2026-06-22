@@ -4,6 +4,7 @@ using BattleReady.Api.Models.Requests;
 using BattleReady.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BattleReady.Api.Controllers;
 
@@ -13,10 +14,12 @@ namespace BattleReady.Api.Controllers;
 public class HitChanceController : ControllerBase
 {
     private readonly IHitChanceService _service;
+    private readonly IMemoryCache _cache;
 
-    public HitChanceController(IHitChanceService service)
+    public HitChanceController(IHitChanceService service, IMemoryCache cache)
     {
         _service = service;
+        _cache = cache;
     }
 
     [HttpPost("calculate")]
@@ -42,12 +45,22 @@ public class HitChanceController : ControllerBase
     [ResponseCache(Duration = 60)]
     public ActionResult<HitChanceResponse> Get([FromQuery] HitChanceRequest request)
     {
-        var response = _service.Calculate(
-            request.ToHit ?? 0,
-            request.Defense ?? 0,
-            request.Natural20Upgrades,
-            request.Natural1Downgrades
-            );
+        // Build a cache key from all inputs that affect the result.
+        // If any input differs, it's a different calculation — different cache entry.
+        var cacheKey = $"HitChance:{request.ToHit}:{request.Defense}:{request.Natural20Upgrades}:{request.Natural1Downgrades}";
+
+        var response = _cache.GetOrCreate(cacheKey, entry =>
+        {
+            // Cache this result for 60 seconds — matches the [ResponseCache] hint
+            // we're already sending to clients, so both layers expire at the same time.
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+            return _service.Calculate(
+                request.ToHit ?? 0,
+                request.Defense ?? 0,
+                request.Natural20Upgrades,
+                request.Natural1Downgrades
+                );
+        });
 
         return Ok(response);
     }

@@ -42,6 +42,7 @@ builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache();
 
 // Rate limiting — fixed window policy applied globally.
 // Exemptions for /health and Swagger are handled at the middleware/route level below.
