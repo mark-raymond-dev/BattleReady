@@ -6,6 +6,8 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using Asp.Versioning;
 using BattleReady.Api.Filters;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 // Set up Serilog. The message levels are, in order:
 // Verbose, Debug, Information, Warning, Error, Fatal.
@@ -40,6 +42,23 @@ builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Rate limiting — fixed window policy applied globally.
+// Exemptions for /health and Swagger are handled at the middleware/route level below.
+// Fixed window: each caller gets 30 requests per 10-second window.
+// Excess requests receive 429 Too Many Requests.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("fixed", limiterOptions =>
+    {
+        limiterOptions.Window             = TimeSpan.FromSeconds(10);
+        limiterOptions.PermitLimit        = 30;
+        limiterOptions.QueueLimit         = 0;
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
 
 // Register your services. This is essentially registering "recipes" with builder.Services. It's sort of 
 // like saying "if anyone ever asks for an ICalculationService, here's how to make one: construct a 
@@ -101,13 +120,13 @@ if (!app.Environment.IsEnvironment("Testing"))
     }    
 }
 
+app.UseRateLimiter();
 app.UseSwagger();
-app.UseSwaggerUI();
-
+app.UseSwaggerUI(); // Swagger registers routes before MapControllers() line below, therefore doesn't need explicit exemption
 app.UseHttpsRedirection();
 app.UseAuthorization();
-app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapControllers().RequireRateLimiting("fixed"); // applies fixed window policy to all controller endpoints
+app.MapHealthChecks("/health").DisableRateLimiting(); // explicit exemption for the health endpoint
 
 try
 {
