@@ -1,11 +1,12 @@
 using BattleReady.Core.Features.Calculator.Services;
 using BattleReady.Data;
+using BattleReady.Api.Filters;
+using BattleReady.Api.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Compact;
 using Asp.Versioning;
-using BattleReady.Api.Filters;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
@@ -121,6 +122,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     }    
 }
 
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseRateLimiter();
 app.UseSwagger();
 app.UseSwaggerUI(); // Swagger registers routes before MapControllers() line below, therefore doesn't need explicit exemption
