@@ -1,10 +1,10 @@
 using BattleReady.Api.Models.Requests;
 using BattleReady.Api.Models.Responses;
 using BattleReady.Data;
-using BattleReady.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Asp.Versioning;
+using BattleReady.Api.Mapping;
 
 namespace BattleReady.Api.Controllers;
 
@@ -57,12 +57,12 @@ public class LogsController : ControllerBase
             PageSize = request.PageSize,
             TotalRecords = totalRecords,
             TotalPages = totalPages,
-            Records = records
+            Records = records.Select(x => x.ToDto()).ToList()
         });
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ApiRequestLog>> GetLog(
+    public async Task<ActionResult<ApiRequestLogDto>> GetLog(
         int id,
         CancellationToken cancellationToken)
     {
@@ -83,6 +83,6 @@ public class LogsController : ControllerBase
         if (log == null)
             return NotFound();
 
-        return Ok(log);
+        return Ok(log.ToDto());
     }
 }
