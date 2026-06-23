@@ -20,7 +20,7 @@ public class CalculationRequest : IValidatableObject
     #region Properties without DataAnnotations
 
     public string? CharacterName { get; set; } 
-    public AttackRequest? DefaultAttack { get; set; } = null;
+    public DefaultAttackRequest? DefaultAttack { get; set; } = null;
     public string? Notes { get; set; }
     public bool Natural20Upgrades { get; set; } = true;
     public bool Natural1Downgrades { get; set; } = true;
@@ -36,7 +36,7 @@ public class CalculationRequest : IValidatableObject
             yield return new ValidationResult(
                 "DefaultAttack is required when any attack has IsDefaultAttack set to true.",
                 new[] { nameof(DefaultAttack) });
-    }
+    }  
 
     #endregion
 

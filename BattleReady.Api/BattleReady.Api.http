@@ -1,6 +1,45 @@
-@BattleReady.Api_HostAddress = http://localhost:5231
+@hostAddress = http://localhost:5231
 
-GET {{BattleReady.Api_HostAddress}}/weatherforecast/
+###
+# Calculate expected damage for a 3-attack sequence
+POST {{hostAddress}}/api/v1/Calculator/calculate
+Content-Type: application/json
+
+{
+  "enemyDefense": 19,
+  "characterName": "Test Fighter",
+  "natural20Upgrades": true,
+  "natural1Downgrades": true,
+  "defaultAttack": {
+    "baseToHit": 12,
+    "normalHitDamage": "1d6+6 slashing",
+    "critHitDamage": "dbl",
+    "normalMissDamage": "0",
+    "critMissDamage": "0"
+  },
+  "attacks": [
+    { "attackNumber": 1, "isDefaultAttack": true },
+    { "attackNumber": 2, "isDefaultAttack": true },
+    { "attackNumber": 3, "isDefaultAttack": true }
+  ]
+}
+
+###
+# Get hit chance breakdown (GET — no logging, cacheable)
+GET {{hostAddress}}/api/v1/HitChance/calculate?toHit=12&defense=19&natural20Upgrades=true&natural1Downgrades=true
 Accept: application/json
 
 ###
+# Parse a damage expression (GET — no logging, cacheable)
+GET {{hostAddress}}/api/v1/ParseDamage/calculate?expression=2d6%2B3+slashing
+Accept: application/json
+
+###
+# Get recent logs filtered by endpoint
+GET {{hostAddress}}/api/v1/Logs?endpoint=Calculator&page=1&pageSize=5
+Accept: application/json
+
+###
+# Health check
+GET {{hostAddress}}/health
+Accept: application/json
