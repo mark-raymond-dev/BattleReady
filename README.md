@@ -1,7 +1,7 @@
 # BattleReady
 
 A Pathfinder 2e combat calculator that computes expected damage per round across multiple attacks.
-Built as a portfolio project to demonstrate modern .NET development practices including clean architecture, dependency inversion, Entity Framework Core, REST API design, structured logging, API versioning, and both unit and integration testing.
+Built as a portfolio project to demonstrate modern .NET development practices including clean architecture, dependency inversion, Entity Framework Core, REST API design, structured logging, API versioning, rate limiting, server-side caching, request correlation, and both unit and integration testing.
 
 ---
 
@@ -38,7 +38,7 @@ All endpoints are versioned under `/api/v1/`. See [API Versioning](#api-versioni
 
 The primary endpoint. Submits a full attack sequence and receives per-attack breakdowns plus a grand total. Logs each request to the database.
 
-**Example request:**
+**Example request — using a default attack template:**
 
 ```json
 {
@@ -61,6 +61,28 @@ The primary endpoint. Submits a full attack sequence and receives per-attack bre
 }
 ```
 
+The `defaultAttack` object acts as a template. Concrete attacks with `"isDefaultAttack": true` inherit all fields from it; their own `attackNumber` is preserved. `defaultAttack` uses a separate type (`DefaultAttackRequest`) — it has no `attackNumber` or `isDefaultAttack` field, and `normalHitDamage` is required on it unconditionally.
+
+**Example request — explicit attacks without a template:**
+
+```json
+{
+  "enemyDefense": 19,
+  "natural20Upgrades": true,
+  "natural1Downgrades": true,
+  "attacks": [
+    {
+      "attackNumber": 1,
+      "baseToHit": 12,
+      "normalHitDamage": "1d6+6 slashing",
+      "critHitDamage": "dbl",
+      "normalMissDamage": "0",
+      "critMissDamage": "0"
+    }
+  ]
+}
+```
+
 **Example response (abbreviated):**
 
 ```json
@@ -71,17 +93,17 @@ The primary endpoint. Submits a full attack sequence and receives per-attack bre
       "effectiveToHit": 12,
       "effectiveDefense": 19,
       "critHitChance": 0.2,
-      "normalHitChance": 0.65,
-      "normalMissChance": 0.1,
+      "normalHitChance": 0.5,
+      "normalMissChance": 0.25,
       "critMissChance": 0.05,
       "avgDmgCritHit": 19.0,
       "avgDmgNormalHit": 9.5,
       "avgDmgNormalMiss": 0.0,
       "avgDmgCritMiss": 0.0,
-      "totalExpectedDamage": 9.925
+      "totalExpectedDamage": 8.55
     }
   ],
-  "totalExpectedDamageAllAttacks": 19.25,
+  "totalExpectedDamageAllAttacks": 8.55,
   "calculatedAt": "2026-06-09T00:00:00Z"
 }
 ```
@@ -94,7 +116,7 @@ Calculates hit chance breakdown for a single attack roll. Logs each request to t
 
 ### `GET /api/v1/HitChance/calculate`
 
-Same calculation as the POST version but read-only — no logging. Parameters are passed as query string values, making results bookmarkable and cacheable.
+Same calculation as the POST version but read-only — no logging. Parameters are passed as query string values, making results bookmarkable and cacheable. Results are served from server-side memory cache when the same inputs are repeated.
 
 **Example:** `/api/v1/HitChance/calculate?toHit=12&defense=19&natural20Upgrades=true&natural1Downgrades=true`
 
@@ -119,7 +141,7 @@ Parses a damage expression string and returns its components and average damage.
 
 ### `GET /api/v1/ParseDamage/calculate`
 
-Same calculation as the POST version but read-only — no logging, results are cacheable.
+Same calculation as the POST version but read-only — no logging, results are served from server-side memory cache on repeat inputs.
 
 **Example:** `/api/v1/ParseDamage/calculate?expression=2d6%2B3+slashing`
 
@@ -169,6 +191,8 @@ Returns a paginated list of API request logs with optional filtering.
 }
 ```
 
+Log records are returned as `ApiRequestLogDto` objects — a decoupled response contract that is independent of the underlying EF entity, ensuring the API contract can evolve without being tied to database schema changes.
+
 ---
 
 ### `GET /api/v1/Logs/{id}`
@@ -192,13 +216,36 @@ When supplying `critHitDamage`, `normalMissDamage`, or `critMissDamage`, you can
 
 ---
 
+## Validation
+
+Request validation is handled at the API layer via `IValidatableObject` and `[DataAnnotations]`, before any domain logic runs.
+
+**Cross-field rules enforced:**
+- `IsAgile = true` requires `HasMAP = true` (agile is meaningless without MAP)
+- `IsDefaultAttack = true` on any attack requires a `DefaultAttack` template to be present
+- Concrete attacks (`IsDefaultAttack = false`) must supply `BaseToHit` and `NormalHitDamage` directly
+- `DefaultAttack.NormalHitDamage` is always required when `DefaultAttack` is provided
+
+**Type-level separation:**
+`DefaultAttackRequest` and `AttackRequest` are deliberately separate types with different validation contracts. `DefaultAttackRequest` has no `AttackNumber` or `IsDefaultAttack` (meaningless on the template) and validates `NormalHitDamage` unconditionally. `AttackRequest` validates `AttackNumber` (range 1–20) unconditionally and `BaseToHit`/`NormalHitDamage` only when `IsDefaultAttack = false`.
+
+All validation errors return `400 Bad Request` with a structured RFC 7807 `ValidationProblemDetails` body.
+
+---
+
 ## API Versioning
 
 All endpoints are versioned via the URL path (`/api/v1/...`), implemented with the `Asp.Versioning` package. Each controller declares its version with `[ApiVersion("1.0")]`, and the version is resolved from the route itself (`api/v{version:apiVersion}/[controller]`).
 
-Versioning is applied per-controller rather than globally — if a future change requires a breaking update to one resource's contract (say, `HitChance`), only that controller moves to `/api/v2/HitChance/...` while every other endpoint stays on v1, unaffected. Existing consumers of an unversioned-by-them endpoint are never forced into a breaking change just because a different part of the API evolved.
+Versioning is applied per-controller rather than globally — if a future change requires a breaking update to one resource's contract (say, `HitChance`), only that controller moves to `/api/v2/HitChance/...` while every other endpoint stays on v1, unaffected.
 
 Swagger UI reflects the current version via a "Select a definition" dropdown, which will list each active version once more than one exists.
+
+---
+
+## Rate Limiting
+
+The API applies a **fixed-window rate limit** of 30 requests per 10 seconds per client, using `Microsoft.AspNetCore.RateLimiting`. Requests that exceed the limit receive `429 Too Many Requests`. The `/health` endpoint is exempt from rate limiting so uptime monitors are never blocked.
 
 ---
 
@@ -206,18 +253,22 @@ Swagger UI reflects the current version via a "Select a definition" dropdown, wh
 
 The API returns [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) for all error responses:
 
-- **Validation errors** (e.g. missing required fields) return `400 Bad Request` with a structured `ValidationProblemDetails` body — handled automatically by `[ApiController]`.
-- **Unhandled exceptions** return `500 Internal Server Error` with a structured `ProblemDetails` body, via a global exception handler (`AddProblemDetails()` + `UseExceptionHandler()`), instead of a raw stack trace or an unstructured error.
-- **Not-found responses** (e.g. `GET /api/v1/Logs/{id}` for a missing record) also return a structured `ProblemDetails` body.
+- **Validation errors** return `400 Bad Request` with a structured `ValidationProblemDetails` body
+- **Rate limit exceeded** returns `429 Too Many Requests`
+- **Not-found responses** return a structured `ProblemDetails` body
+- **Unhandled exceptions** return `500 Internal Server Error` with a structured `ProblemDetails` body via a global exception handler (`AddProblemDetails()` + `UseExceptionHandler()`), rather than a raw stack trace
 
-This gives any API consumer one consistent, machine-readable error shape to parse, rather than a different ad-hoc format per failure mode.
+This gives any API consumer one consistent, machine-readable error shape to parse, regardless of failure mode.
 
 ---
 
 ## Health & Observability
 
-- **`GET /health`** — reports application and SQL Server connectivity status (`Healthy` / `Degraded` / `Unhealthy`), suitable for uptime monitoring or as a probe target for App Service / container orchestrators. The SQL Server check is configured to report `Degraded` rather than `Unhealthy` on failure, since the underlying Azure SQL free tier can have transient cold-start delays that aren't true outages.
-- **Structured logging** — all application logs are emitted as compact JSON via [Serilog](https://serilog.net/), written to both the console and a rolling daily file (`logs/log-{date}.json`, gitignored). JSON-structured logs are ready for ingestion by log aggregation tooling (e.g. Azure Monitor, Seq) without regex parsing, and every field (timestamp, level, message, request context) is independently queryable rather than embedded in a formatted sentence.
+**`GET /health`** reports application and SQL Server connectivity status (`Healthy` / `Degraded` / `Unhealthy`). The SQL Server check reports `Degraded` rather than `Unhealthy` on failure, since the Azure SQL free tier can have transient cold-start delays that aren't true outages.
+
+**Structured logging** — all application logs are emitted as compact JSON via [Serilog](https://serilog.net/), written to both the console and a rolling daily file (`logs/log-{date}.json`, gitignored). Every log line for a given HTTP request shares the same `CorrelationId` (propagated via `RequestLoggingMiddleware` using Serilog's `LogContext`), making it straightforward to trace all activity for a single request across the log stream.
+
+**Request logging** — POST actions on the Calculator, HitChance, and ParseDamage controllers log each request and response to the database via `RequestLoggingFilter` (an `IAsyncActionFilter`). The endpoint string is derived from the live ASP.NET Core route at runtime — never hardcoded. GET endpoints are intentionally excluded from logging.
 
 ---
 
@@ -225,29 +276,31 @@ This gives any API consumer one consistent, machine-readable error shape to pars
 
 ```
 BattleReady.slnx
-├── BattleReady.Core/          # Shared class library — models and services
+├── BattleReady.Core/              # Shared class library — models and services
 │   └── Features/Calculator/
-│       ├── Models/            # Input/response models
-│       │   └── Shared/        # DegreeOfSuccess enum, DegreeOfSuccessCalculator (pure static logic)
-│       └── Services/          # CalculationService, HitChanceService, ParseDamageService
-│                               #   + ICalculationService, IHitChanceService, IParseDamageService
-├── BattleReady.Api/           # ASP.NET Core Web API
-│   ├── Controllers/           # CalculatorController, HitChanceController, ParseDamageController, LogsController
-│   ├── Mapping/                # Extension methods: *Request.ToInput()
-│   ├── Models/Requests/       # API request models with validation attributes
-│   ├── Models/Responses/      # LogsResponse with pagination metadata
-│   └── Program.cs              # DI registrations, Serilog bootstrap, versioning, health checks, Problem Details
-├── BattleReady.Data/           # EF Core data access layer
-│   ├── Entities/                # ApiRequestLog entity
-│   ├── Migrations/              # EF Core migrations (auto-applied on startup)
+│       ├── Models/                # Input/response models
+│       │   └── Shared/            # DegreeOfSuccess enum, DegreeOfSuccessCalculator (pure static logic)
+│       └── Services/              # CalculationService, HitChanceService, ParseDamageService
+│                                  #   + ICalculationService, IHitChanceService, IParseDamageService
+├── BattleReady.Api/               # ASP.NET Core Web API
+│   ├── Controllers/               # CalculatorController, HitChanceController, ParseDamageController, LogsController
+│   ├── Filters/                   # RequestLoggingFilter (IAsyncActionFilter — DB logging on POST actions)
+│   ├── Mapping/                   # Extension methods: *Request.ToInput(), ApiRequestLog.ToDto()
+│   ├── Middleware/                # RequestLoggingMiddleware (CorrelationId → Serilog LogContext)
+│   ├── Models/Requests/           # AttackRequest, DefaultAttackRequest, CalculationRequest, etc.
+│   ├── Models/Responses/          # LogsResponse, ApiRequestLogDto (decoupled from EF entity)
+│   └── Program.cs                 # DI, Serilog bootstrap, versioning, health checks, rate limiting, Problem Details
+├── BattleReady.Data/              # EF Core data access layer
+│   ├── Entities/                  # ApiRequestLog entity (bounded string columns on Endpoint, RequestBody)
+│   ├── Migrations/                # EF Core migrations (auto-applied on startup via db.Database.Migrate())
 │   └── AppDbContext.cs
-├── BattleReady.Console/        # Original console prototype
-└── BattleReady.Tests/          # xUnit test project — 45 tests total
-    ├── HitChance/               # HitChanceServiceTests, DegreeOfSuccessCalculatorTests ([Theory]-based)
-    ├── ParseDamage/              # ParseDamageServiceTests
+├── BattleReady.Console/           # Original console prototype
+└── BattleReady.Tests/             # xUnit test project — 61 tests total
+    ├── HitChance/                 # HitChanceServiceTests, DegreeOfSuccessCalculatorTests ([Theory]-based)
+    ├── ParseDamage/               # ParseDamageServiceTests
     ├── Calculator/                # CalculationServiceTests — Moq-based unit tests of orchestration logic
-    └── Integration/                # Full HTTP-stack tests via WebApplicationFactory + in-memory database,
-                                      #   including health check coverage
+    └── Integration/               # Full HTTP-stack tests via WebApplicationFactory + in-memory database
+                                   #   Covers: Calculator, HitChance, ParseDamage, Logs, health check, 500 ProblemDetails
 ```
 
 ---
@@ -256,23 +309,29 @@ BattleReady.slnx
 
 **Layer separation** — `BattleReady.Core` has zero knowledge of the API or database layers. Dependency arrows always point inward: Api → Core, Data → Core, never the reverse.
 
-**Dependency Inversion** — Controllers and `CalculationService` depend on interfaces (`IHitChanceService`, `IParseDamageService`, `ICalculationService`), not concrete classes, registered via `AddScoped<IXxxService, XxxService>()`. This is what enables true unit testing of `CalculationService`'s orchestration logic in isolation — `CalculationServiceTests` uses Moq to mock both dependencies and verify the orchestration behaves correctly without depending on the real hit-chance or damage-parsing math.
+**Dependency Inversion** — Controllers and `CalculationService` depend on interfaces (`IHitChanceService`, `IParseDamageService`, `ICalculationService`), not concrete classes. This enables `CalculationServiceTests` to use Moq to mock both dependencies and verify orchestration logic in isolation, without depending on the real hit-chance or damage-parsing math.
 
-**Request/Input separation** — Request models (`*Request`) live in the API layer with validation attributes. Core input models (`*Input`) are plain C# with no framework dependencies. Controllers map between them via extension methods in `Mapping/`.
+**Request/Input separation** — Request models (`*Request`) live in the API layer with validation attributes and `IValidatableObject`. Core input models (`*Input`) are plain C# with no framework dependencies. Controllers map between them via extension methods in `Mapping/`.
 
-**Cooperative cancellation** — All async controller actions accept a `CancellationToken`, threaded through to EF Core's async calls (`SaveChangesAsync`, `ToListAsync`, `FindAsync`, etc.). If a client disconnects mid-request, the server abandons the in-flight database work rather than completing it unnecessarily.
+**DefaultAttackRequest vs AttackRequest** — `DefaultAttackRequest` is a deliberately separate type from `AttackRequest`. A default attack template has no `AttackNumber` (meaningless on a template) and no `IsDefaultAttack` flag. Keeping them as one type forced context-dependent validation that was fragile and hard to reason about; two types with distinct contracts is the honest model.
 
-**GET vs POST** — The Calculator endpoint uses POST because it logs to the database on every call (side effect). The HitChance and ParseDamage endpoints offer both: POST with logging for stateful clients, GET without logging for pure read-only calculations. GET responses are marked cacheable with `[ResponseCache]`.
+**DTO decoupling** — The `GET /api/v1/Logs` response returns `ApiRequestLogDto` rather than the raw `ApiRequestLog` EF entity. This prevents the API contract from being accidentally coupled to database schema changes, and makes the response shape explicitly owned by the API layer.
 
-**Per-controller API versioning** — Each controller is versioned independently via `[ApiVersion("1.0")]`, rather than versioning the entire API as one unit. A breaking change to one resource doesn't force a version bump on resources that haven't changed.
+**Cooperative cancellation** — All async controller actions accept a `CancellationToken`, threaded through to EF Core's async calls for the primary query work. The one deliberate exception is the post-success logging write in `RequestLoggingFilter` — cancellation is intentionally omitted there, because a client disconnect after a successful response should not prevent that request from being recorded in the audit log.
 
-**Structured error responses** — All errors (validation, not-found, unhandled exceptions) return RFC 7807 Problem Details via `AddProblemDetails()` + `UseExceptionHandler()`, giving consumers one consistent error shape instead of inconsistent per-endpoint formats.
+**GET vs POST** — The Calculator endpoint uses POST because it logs to the database (side effect). HitChance and ParseDamage offer both: POST with logging for stateful clients, GET without logging for pure read-only calculations. GET responses are server-side cached via `IMemoryCache`; cache keys include all inputs.
 
-**Auto-migrations** — `db.Database.Migrate()` runs on startup, so schema changes deploy automatically with the code. No manual SQL steps required.
+**RequestLoggingFilter placement** — `[ServiceFilter(typeof(RequestLoggingFilter))]` is applied at the method level on POST actions only, not at the class level. On controllers that expose both GET and POST actions, class-level placement would incorrectly log GET requests.
+
+**Rate limiting** — Fixed-window limiting is applied globally via `MapControllers().RequireRateLimiting("fixed")`. The `/health` endpoint opts out via `.DisableRateLimiting()` so monitoring probes are never throttled.
+
+**Column size constraints** — `ApiRequestLog.Endpoint` is capped at `nvarchar(500)` and `RequestBody` at `nvarchar(4000)` via `[MaxLength]`. `ResponseBody` is intentionally left as `nvarchar(max)` — response bodies for large attack sequences can exceed 4,000 characters (SQL Server's maximum bounded `nvarchar` length), so truncating would produce incomplete log records.
+
+**Auto-migrations** — `db.Database.Migrate()` runs on startup. Schema changes deploy automatically with the code; no manual SQL steps are required.
 
 **Secure secrets** — The production connection string is stored as an Azure App Service environment variable, never in source code or `appsettings.json`.
 
-**CI/CD pipeline** — GitHub Actions builds, runs all 45 tests, and deploys on every push to `master`. A failing test blocks deployment.
+**CI/CD pipeline** — GitHub Actions builds, runs all 61 tests, and deploys on every push to `master`. A failing test blocks deployment.
 
 ---
 
@@ -299,11 +358,13 @@ Then run:
 dotnet run --project BattleReady.Api
 ```
 
-The database and tables are created automatically on first run. Swagger UI will be available at `https://localhost:{port}/swagger`, and the health check at `https://localhost:{port}/health`.
+The database and tables are created automatically on first run. Swagger UI will be available at `http://localhost:{port}/swagger` and the health check at `http://localhost:{port}/health`.
 
 Structured logs are written to the console and to `logs/log-{date}.json` (relative to the `BattleReady.Api` working directory) on every run.
 
-To run all 45 tests:
+**Firing requests locally** — the repo includes `BattleReady.Api/BattleReady.Api.http` with pre-built requests for every endpoint. Install the [REST Client extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) for VS Code, start the API, and click "Send Request" above any block.
+
+To run all 61 tests:
 
 ```bash
 dotnet test
@@ -318,6 +379,8 @@ dotnet test
 - Entity Framework Core 10 with SQL Server
 - Swashbuckle (Swagger / OpenAPI)
 - Asp.Versioning (URL-based API versioning)
+- Microsoft.AspNetCore.RateLimiting (fixed-window rate limiting)
+- Microsoft.Extensions.Caching.Memory (server-side IMemoryCache on GET endpoints)
 - Serilog (structured JSON logging — console + rolling file sinks)
 - AspNetCore.HealthChecks.SqlServer (health check endpoint with DB connectivity probe)
 - xUnit (unit tests + integration tests via `WebApplicationFactory`)
