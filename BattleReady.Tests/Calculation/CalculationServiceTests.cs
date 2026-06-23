@@ -494,4 +494,54 @@ public class CalculationServiceTests
             s => s.Calculate(placeholderDamage),
             Times.Never());
     }
+
+    [Theory]
+    [InlineData(4, false, 0)]   // non-agile attack 4: cap at 2 tiers → 10 + (-5 × 2) = 0, same as attack 3
+    [InlineData(5, false, 0)]   // non-agile attack 5: still capped  → 10 + (-5 × 2) = 0
+    [InlineData(4, true,  2)]   // agile attack 4: cap at 2 tiers    → 10 + (-4 × 2) = 2, same as attack 3
+    [InlineData(5, true,  2)]   // agile attack 5: still capped      → 10 + (-4 × 2) = 2
+    public void Calculate_MAPCapAtThirdAttack_EffectiveToHitDoesNotContinueToDrop(
+        int attackNumber, bool isAgile, int expectedEffectiveToHit)
+    {
+        // Arrange
+        int baseToHit    = 10;
+        int enemyDefense = 20;
+
+        // Stub out both services so the test doesn't crash on null returns.
+        // We only care about EffectiveToHit; damage values are irrelevant here.
+        _mockHitChanceService
+            .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(new HitChanceResponse());
+        _mockParseDamageService
+            .Setup(s => s.Calculate(It.IsAny<string>()))
+            .Returns(new ParseDamageResponse());
+
+        var input = new CalculationInput
+        {
+            EnemyDefense       = enemyDefense,
+            Natural20Upgrades  = true,
+            Natural1Downgrades = true,
+            Attacks = new List<AttackInput>
+            {
+                new AttackInput
+                {
+                    AttackNumber     = attackNumber,
+                    BaseToHit        = baseToHit,
+                    HasMAP           = true,
+                    IsAgile          = isAgile,
+                    NormalHitDamage  = "1d6",
+                    CritHitDamage    = "dbl",
+                    NormalMissDamage = "0",
+                    CritMissDamage   = "0"
+                }
+            }
+        };
+
+        // Act
+        var result = _service.Calculate(input);
+
+        // Assert
+        var attackResult = result.AttackResponses.Single();
+        Assert.Equal(expectedEffectiveToHit, attackResult.EffectiveToHit);
+    }
 }

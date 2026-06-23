@@ -122,8 +122,15 @@ public class CalculationService : ICalculationService
             var effectiveToHit = effectiveAttack.BaseToHit;
             if (effectiveAttack.HasMAP)
             {
+                // Normal attack penalty is -5, unless you are using
+                // an agile weapon, in which case it is -4.
                 var mapAdjustment = effectiveAttack.IsAgile ? -4 : -5;
-                var attacksPastTheFirst = effectiveAttack.AttackNumber - 1;
+
+                // MAP penalty caps at the third attack in Pathfinder 2e — attacks 3, 4, 5, etc.
+                // all use the same penalty as attack 3 (i.e. 2 tiers past the first).
+                var attacksPastTheFirst = Math.Min(effectiveAttack.AttackNumber - 1, 2);
+
+                // Determine the TOTAL penalty for this attack.
                 var totalMapAdjustment = mapAdjustment * attacksPastTheFirst;
                 effectiveToHit += totalMapAdjustment;
             }
