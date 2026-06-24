@@ -24,15 +24,13 @@ public class CalculationServiceTests
         // ARRANGE
         //-----------------
 
-        // Set our initial test data values.
-
         // Define values for CalculationInput.
         int enemyDefense = 15;
         bool nat20Upgrade = true;
         bool nat1Downgrade = true;
 
         // Define values for CalculationInput's first (and only) attack.
-        int baseToHit = 8;
+        int skillRating = 8;
         string normHitDiceExp = "2d6+3";
         string critHitDiceExp = "double";
         string normMissDiceExp = "half";
@@ -79,22 +77,21 @@ public class CalculationServiceTests
                 ParseStatus = parseStatus
             });
 
-        // Setup direct input object for CalculationService
         var input = new CalculationInput
         {
-            EnemyDefense = enemyDefense,
-            Natural20Upgrades = nat20Upgrade,
+            Natural20Upgrades  = nat20Upgrade,
             Natural1Downgrades = nat1Downgrade,
             Attacks = new List<AttackInput>
             {
                 new AttackInput
                 {
-                    AttackNumber = 1,
-                    BaseToHit = baseToHit,
-                    NormalHitDamage = normHitDiceExp,
-                    CritHitDamage = critHitDiceExp,
-                    NormalMissDamage = normMissDiceExp,
-                    CritMissDamage = critMissDiceExp,
+                    AttackNumber                = 1,
+                    SkillRating                 = skillRating,
+                    TargetScore                 = enemyDefense,
+                    NormalHitDamage             = normHitDiceExp,
+                    CritHitDamage               = critHitDiceExp,
+                    NormalMissDamage            = normMissDiceExp,
+                    CritMissDamage              = critMissDiceExp,
                     IsSpellRequiringSavingThrow = isSpellReqSavingThrow
                 }
             }
@@ -115,31 +112,29 @@ public class CalculationServiceTests
         var attack = result.AttackResponses.Single();
 
         // Attack Response: Damage for each of the 4 degrees of success
-        Assert.Equal(normHitDamage, attack.AvgDmgNormalHit);        // came straight from the mocked ParseDamageResponse
-        Assert.Equal(critHitDamage, attack.AvgDmgCritHit);          // "double" keyword = 2.0 x AvgDmgNormalHit, no service call needed
-        Assert.Equal(normMissDamage, attack.AvgDmgNormalMiss);      // "half" keyword   = 0.5 x AvgDmgNormalHit, no service call needed
-        Assert.Equal(critMissDamage, attack.AvgDmgCritMiss);        // "zero" keyword   = 0.0 x AvgDmgNormalHit, no service call needed
+        Assert.Equal(normHitDamage, attack.AvgDmgNormalHit);
+        Assert.Equal(critHitDamage, attack.AvgDmgCritHit);
+        Assert.Equal(normMissDamage, attack.AvgDmgNormalMiss);
+        Assert.Equal(critMissDamage, attack.AvgDmgCritMiss);
 
-        // Attack Response: Liklihood of each of the 4 degrees of success
+        // Attack Response: Likelihood of each of the 4 degrees of success
         Assert.Equal(critHitChance, attack.CritHitChance);
         Assert.Equal(normHitChance, attack.NormalHitChance);
         Assert.Equal(normMissChance, attack.NormalMissChance);
         Assert.Equal(critMissChance, attack.CritMissChance);
 
-        // Attack Reponse: Statistical average damage expected
+        // Attack Response: Statistical average damage expected
         Assert.Equal(totalExpectedDamage, attack.TotalExpectedDamage);
 
-        // Verify the dependency (HitChanceService) was actually called
-        // the right number of times, with the right to-hit/defense values.
+        // Verify HitChanceService was called with the right values
         _mockHitChanceService.Verify(
-            s => s.Calculate(baseToHit, enemyDefense, nat20Upgrade, nat1Downgrade),
+            s => s.Calculate(skillRating, enemyDefense, nat20Upgrade, nat1Downgrade),
             Times.Once);
 
-        // Verify the dependency (ParseDamageService) was actually called
-        // the right number of times, with the right dice expression.
+        // Verify ParseDamageService was called with the right expression
         _mockParseDamageService.Verify(
             s => s.Calculate(normHitDiceExp),
-            Times.Once);            
+            Times.Once);
     }
 
     [Fact]
@@ -149,87 +144,76 @@ public class CalculationServiceTests
         // ARRANGE
         //-----------------
 
-        // Set our initial test data values.
-
-        // Define values for CalculationInput.
         int enemyDefense = 15;
         bool nat20Upgrade = true;
         bool nat1Downgrade = true;
 
-        // Define values for CalculationInput's first (and only) attack.
-        // Note: normHitDiceExp, critHitDiceExp, normMissDiceExp, critMissDiceExp, and isSpellReqSavingThrow
-        // below are NOT asserted on in this test — they exist only to satisfy AttackInput's shape.
-        // This test only verifies HitChanceService call counts and to-hit values (see ASSERT section).
         bool hasMap = true;
         bool isAgile = false;
-        int baseToHit = 10;
-        string normHitDiceExp = "2d6+3";        // Not asserted - can be anything
-        string critHitDiceExp = "double";       // Not asserted - can be anything
-        string normMissDiceExp = "half";        // Not asserted - can be anything
-        string critMissDiceExp = "zero";        // Not asserted - can be anything
-        bool isSpellReqSavingThrow = true;      // Not asserted - can be anything
+        int skillRating = 10;
+        string normHitDiceExp = "2d6+3";
+        string critHitDiceExp = "double";
+        string normMissDiceExp = "half";
+        string critMissDiceExp = "zero";
+        bool isSpellReqSavingThrow = true;
 
-        // Define values for expected pass-in values for the 2nd and 3rd attacks.
-        int secondAttackToHit = 5;  // has MAP, but is not Agile ... means 10 - 5 = 5
-        int thirdAttackToHit = 0;   // has MAP, but is not Agile ... means 10 - 5 - 5 = 0
+        // With sequential numbering (1, 2, 3), MAP penalties are -5 and -10.
+        // secondAttackSkillRating = 10 + (-5 × 1) = 5
+        // thirdAttackSkillRating  = 10 + (-5 × 2) = 0
+        int secondAttackSkillRating = 5;
+        int thirdAttackSkillRating  = 0;
 
-        // Stub HitChanceService dependency to return known, fixed values
-        // (actually in this case we don't care, it doesn't matter)
         _mockHitChanceService
             .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .Returns(new HitChanceResponse());
 
-        // Stub ParseDamageService dependency to return known, fixed values
-        // (actually in this case we don't care, it doesn't matter)
         _mockParseDamageService
             .Setup(s => s.Calculate(It.IsAny<string>()))
             .Returns(new ParseDamageResponse());
 
-        // Setup direct input object for CalculationService.
-        // Note: normHitDiceExp, critHitDiceExp, normMissDiceExp, critMissDiceExp, and isSpellReqSavingThrow
-        // below are NOT asserted on in this test — they exist only to satisfy AttackInput's shape.
-        // This test only verifies HitChanceService call counts and to-hit values (see ASSERT section).
         var input = new CalculationInput
         {
-            EnemyDefense = enemyDefense,
-            Natural20Upgrades = nat20Upgrade,
+            Natural20Upgrades  = nat20Upgrade,
             Natural1Downgrades = nat1Downgrade,
             Attacks = new List<AttackInput>
             {
                 new AttackInput
                 {
-                    AttackNumber = 1,
-                    HasMAP = hasMap,
-                    IsAgile = isAgile,
-                    BaseToHit = baseToHit,
-                    NormalHitDamage = normHitDiceExp,
-                    CritHitDamage = critHitDiceExp, 
-                    NormalMissDamage = normMissDiceExp,
-                    CritMissDamage = critMissDiceExp,
+                    AttackNumber                = 1,
+                    HasMAP                      = hasMap,
+                    IsAgile                     = isAgile,
+                    SkillRating                 = skillRating,
+                    TargetScore                 = enemyDefense,
+                    NormalHitDamage             = normHitDiceExp,
+                    CritHitDamage               = critHitDiceExp,
+                    NormalMissDamage            = normMissDiceExp,
+                    CritMissDamage              = critMissDiceExp,
                     IsSpellRequiringSavingThrow = isSpellReqSavingThrow
                 },
                 new AttackInput
                 {
-                    AttackNumber = 2,
-                    HasMAP = hasMap,
-                    IsAgile = isAgile,
-                    BaseToHit = baseToHit,
-                    NormalHitDamage = normHitDiceExp,
-                    CritHitDamage = critHitDiceExp, 
-                    NormalMissDamage = normMissDiceExp,
-                    CritMissDamage = critMissDiceExp,
+                    AttackNumber                = 2,
+                    HasMAP                      = hasMap,
+                    IsAgile                     = isAgile,
+                    SkillRating                 = skillRating,
+                    TargetScore                 = enemyDefense,
+                    NormalHitDamage             = normHitDiceExp,
+                    CritHitDamage               = critHitDiceExp,
+                    NormalMissDamage            = normMissDiceExp,
+                    CritMissDamage              = critMissDiceExp,
                     IsSpellRequiringSavingThrow = isSpellReqSavingThrow
                 },
                 new AttackInput
                 {
-                    AttackNumber = 3,
-                    HasMAP = hasMap,
-                    IsAgile = isAgile,
-                    BaseToHit = baseToHit,
-                    NormalHitDamage = normHitDiceExp,
-                    CritHitDamage = critHitDiceExp, 
-                    NormalMissDamage = normMissDiceExp,
-                    CritMissDamage = critMissDiceExp,
+                    AttackNumber                = 3,
+                    HasMAP                      = hasMap,
+                    IsAgile                     = isAgile,
+                    SkillRating                 = skillRating,
+                    TargetScore                 = enemyDefense,
+                    NormalHitDamage             = normHitDiceExp,
+                    CritHitDamage               = critHitDiceExp,
+                    NormalMissDamage            = normMissDiceExp,
+                    CritMissDamage              = critMissDiceExp,
                     IsSpellRequiringSavingThrow = isSpellReqSavingThrow
                 }
             }
@@ -248,15 +232,15 @@ public class CalculationServiceTests
         //-----------------
 
         _mockHitChanceService.Verify(
-            s => s.Calculate(baseToHit, enemyDefense, nat20Upgrade, nat1Downgrade),
+            s => s.Calculate(skillRating, enemyDefense, nat20Upgrade, nat1Downgrade),
             Times.Exactly(1));
 
         _mockHitChanceService.Verify(
-            s => s.Calculate(secondAttackToHit, enemyDefense, nat20Upgrade, nat1Downgrade),
+            s => s.Calculate(secondAttackSkillRating, enemyDefense, nat20Upgrade, nat1Downgrade),
             Times.Exactly(1));
 
         _mockHitChanceService.Verify(
-            s => s.Calculate(thirdAttackToHit, enemyDefense, nat20Upgrade, nat1Downgrade),
+            s => s.Calculate(thirdAttackSkillRating, enemyDefense, nat20Upgrade, nat1Downgrade),
             Times.Exactly(1));
     }
 
@@ -267,49 +251,40 @@ public class CalculationServiceTests
         // ARRANGE
         //-----------------
 
-        // Set our initial test data values.
-
-        // Define values for CalculationInput.
         int enemyDefense = 15;
         bool nat20Upgrade = true;
         bool nat1Downgrade = true;
 
-        // Define values for CalculationInput's first (and only) attack.
-        int baseToHit = 10;
+        int skillRating = 10;
         string normHitDiceExp = "2d6+4";
         string critHitDiceExp = "4d6+5";
         string normMissDiceExp = "1d6+2";
         string critMissDiceExp = "1d4";
         bool isSpellReqSavingThrow = true;
 
-        // Stub HitChanceService dependency to return known, fixed values
-        // (actually in this case we don't care, it doesn't matter)
         _mockHitChanceService
             .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .Returns(new HitChanceResponse());
 
-        // Stub ParseDamageService dependency to return known, fixed values
-        // (actually in this case we don't care, it doesn't matter)
         _mockParseDamageService
             .Setup(s => s.Calculate(It.IsAny<string>()))
             .Returns(new ParseDamageResponse());
 
-        // Setup direct input object for CalculationService
         var input = new CalculationInput
         {
-            EnemyDefense = enemyDefense,
-            Natural20Upgrades = nat20Upgrade,
+            Natural20Upgrades  = nat20Upgrade,
             Natural1Downgrades = nat1Downgrade,
             Attacks = new List<AttackInput>
             {
                 new AttackInput
                 {
-                    AttackNumber = 1,
-                    BaseToHit = baseToHit,
-                    NormalHitDamage = normHitDiceExp,
-                    CritHitDamage = critHitDiceExp, 
-                    NormalMissDamage = normMissDiceExp,
-                    CritMissDamage = critMissDiceExp,
+                    AttackNumber                = 1,
+                    SkillRating                 = skillRating,
+                    TargetScore                 = enemyDefense,
+                    NormalHitDamage             = normHitDiceExp,
+                    CritHitDamage               = critHitDiceExp,
+                    NormalMissDamage            = normMissDiceExp,
+                    CritMissDamage              = critMissDiceExp,
                     IsSpellRequiringSavingThrow = isSpellReqSavingThrow
                 }
             }
@@ -351,15 +326,14 @@ public class CalculationServiceTests
         // ARRANGE
         //----------------
 
-        // Both attacks have AttackNumber = 1 — EnsureUniqueAttackNumbers should
-        // renumber the second one to 2, so MAP applies correctly.
         int duplicateAttackNumber = 1;
-        int baseToHit = 10;
+        int skillRating = 10;
+        int enemyDefense = 15;
         string normHitDiceExp = "1d6";
 
         // With sequential numbering (1 and 2), MAP penalty on attack 2 = -5.
-        // expectedSecondToHit = 10 + (-5 * (2-1)) = 5
-        int expectedSecondToHit = 5;
+        // expectedSecondSkillRating = 10 + (-5 × (2-1)) = 5
+        int expectedSecondSkillRating = 5;
 
         _mockHitChanceService
             .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
@@ -371,32 +345,33 @@ public class CalculationServiceTests
 
         var input = new CalculationInput
         {
-            EnemyDefense = 15,
-            Natural20Upgrades = true,
+            Natural20Upgrades  = true,
             Natural1Downgrades = true,
             Attacks = new List<AttackInput>
             {
                 new AttackInput
                 {
-                    AttackNumber      = duplicateAttackNumber,
-                    BaseToHit         = baseToHit,
-                    HasMAP            = true,
-                    IsAgile           = false,
-                    NormalHitDamage   = normHitDiceExp,
-                    CritHitDamage     = "double",
-                    NormalMissDamage  = "0",
-                    CritMissDamage    = "0"
+                    AttackNumber     = duplicateAttackNumber,
+                    SkillRating      = skillRating,
+                    TargetScore      = enemyDefense,
+                    HasMAP           = true,
+                    IsAgile          = false,
+                    NormalHitDamage  = normHitDiceExp,
+                    CritHitDamage    = "double",
+                    NormalMissDamage = "0",
+                    CritMissDamage   = "0"
                 },
                 new AttackInput
                 {
-                    AttackNumber      = duplicateAttackNumber,   // intentional duplicate
-                    BaseToHit         = baseToHit,
-                    HasMAP            = true,
-                    IsAgile           = false,
-                    NormalHitDamage   = normHitDiceExp,
-                    CritHitDamage     = "double",
-                    NormalMissDamage  = "0",
-                    CritMissDamage    = "0"
+                    AttackNumber     = duplicateAttackNumber,   // intentional duplicate
+                    SkillRating      = skillRating,
+                    TargetScore      = enemyDefense,
+                    HasMAP           = true,
+                    IsAgile          = false,
+                    NormalHitDamage  = normHitDiceExp,
+                    CritHitDamage    = "double",
+                    NormalMissDamage = "0",
+                    CritMissDamage   = "0"
                 }
             }
         };
@@ -411,17 +386,12 @@ public class CalculationServiceTests
         // ASSERT
         //----------------
 
-        // If renumbering worked correctly, the second attack's effective to-hit
-        // will reflect MAP penalty from AttackNumber 2 (i.e. baseToHit - 5 = 5).
-        // If renumbering did NOT work, both attacks would be treated as AttackNumber 1
-        // and no MAP penalty would be applied to either — HitChanceService would be
-        // called twice with baseToHit (10) and never with expectedSecondToHit (5).
         _mockHitChanceService.Verify(
-            s => s.Calculate(baseToHit, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
+            s => s.Calculate(skillRating, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
             Times.Exactly(1));
 
         _mockHitChanceService.Verify(
-            s => s.Calculate(expectedSecondToHit, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
+            s => s.Calculate(expectedSecondSkillRating, It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()),
             Times.Exactly(1));
     }
 
@@ -432,9 +402,8 @@ public class CalculationServiceTests
         // ARRANGE
         //----------------
 
-        // The attack itself has placeholder damage — the default should overwrite it.
-        string placeholderDamage    = "1d4";        // on the attack — should NOT be used
-        string defaultNormHitDamage = "2d6+5";      // on the default — should be used
+        string placeholderDamage    = "1d4";
+        string defaultNormHitDamage = "2d6+5";
 
         _mockHitChanceService
             .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
@@ -446,13 +415,13 @@ public class CalculationServiceTests
 
         var input = new CalculationInput
         {
-            EnemyDefense       = 15,
             Natural20Upgrades  = true,
             Natural1Downgrades = true,
             DefaultAttack = new AttackInput
             {
                 AttackNumber     = 0,
-                BaseToHit        = 12,
+                SkillRating      = 12,
+                TargetScore      = 15,
                 HasMAP           = true,
                 IsAgile          = false,
                 NormalHitDamage  = defaultNormHitDamage,
@@ -465,7 +434,7 @@ public class CalculationServiceTests
                 new AttackInput
                 {
                     AttackNumber     = 1,
-                    IsDefaultAttack  = true,            // triggers ApplyDefaults
+                    IsDefaultAttack  = true,
                     NormalHitDamage  = placeholderDamage,
                     CritHitDamage    = "double",
                     NormalMissDamage = "0",
@@ -484,8 +453,6 @@ public class CalculationServiceTests
         // ASSERT
         //----------------
 
-        // ApplyDefaults should have caused ParseDamageService to be called with
-        // the default's damage expression, not the attack's placeholder.
         _mockParseDamageService.Verify(
             s => s.Calculate(defaultNormHitDamage),
             Times.Exactly(1));
@@ -504,11 +471,9 @@ public class CalculationServiceTests
         int attackNumber, bool isAgile, int expectedEffectiveToHit)
     {
         // Arrange
-        int baseToHit    = 10;
+        int skillRating  = 10;
         int enemyDefense = 20;
 
-        // Stub out both services so the test doesn't crash on null returns.
-        // We only care about EffectiveToHit; damage values are irrelevant here.
         _mockHitChanceService
             .Setup(s => s.Calculate(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .Returns(new HitChanceResponse());
@@ -518,7 +483,6 @@ public class CalculationServiceTests
 
         var input = new CalculationInput
         {
-            EnemyDefense       = enemyDefense,
             Natural20Upgrades  = true,
             Natural1Downgrades = true,
             Attacks = new List<AttackInput>
@@ -526,11 +490,12 @@ public class CalculationServiceTests
                 new AttackInput
                 {
                     AttackNumber     = attackNumber,
-                    BaseToHit        = baseToHit,
+                    SkillRating      = skillRating,
+                    TargetScore      = enemyDefense,
                     HasMAP           = true,
                     IsAgile          = isAgile,
                     NormalHitDamage  = "1d6",
-                    CritHitDamage    = "dbl",
+                    CritHitDamage    = "",
                     NormalMissDamage = "0",
                     CritMissDamage   = "0"
                 }

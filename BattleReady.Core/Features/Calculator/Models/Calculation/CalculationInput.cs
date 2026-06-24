@@ -5,8 +5,6 @@ public class CalculationInput
 
     #region Properties
 
-    public int EnemyDefense { get; set; }
-
     public List<AttackInput> Attacks { get; set; } = [];
 
     public string? CharacterName { get; set; } 

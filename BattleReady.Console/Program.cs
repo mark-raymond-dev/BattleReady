@@ -4,10 +4,9 @@ using BattleReady.Core.Features.Calculator.Services;
 var input = new CalculationInput
 {
     CharacterName = "Corrupted Wildfire",
-    EnemyDefense = 19,
     Natural20Upgrades = false,
     Natural1Downgrades = false,
-    DefaultAttack = new AttackInput { BaseToHit = 12, NormalHitDamage = "1d6+6 fire", CritHitDamage = "dbl", NormalMissDamage = "0", CritMissDamage = "0" },
+    DefaultAttack = new AttackInput { SkillRating = 12, TargetScore = 19, NormalHitDamage = "1d6+6 fire", CritHitDamage = "dbl", NormalMissDamage = "0", CritMissDamage = "0" },
     Attacks = [
         new AttackInput { AttackNumber = 1, IsDefaultAttack = true },
         new AttackInput { AttackNumber = 2, IsDefaultAttack = true },

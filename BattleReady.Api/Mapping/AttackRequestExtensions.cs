@@ -5,11 +5,12 @@ namespace BattleReady.Api.Mapping;
 
 public static class AttackRequestExtensions
 {
-    public static AttackInput ToInput(this AttackRequest request) => new()
+    public static AttackInput ToInput(this AttackRequest request, int targetScore = 0) => new()
     {
         AttackNumber                = request.AttackNumber,
         IsDefaultAttack             = request.IsDefaultAttack,
-        BaseToHit                   = request.BaseToHit ?? 0,
+        SkillRating                 = request.BaseToHit ?? 0,
+        TargetScore                 = targetScore,
         HasMAP                      = request.HasMAP,
         IsAgile                     = request.IsAgile,
         IsSpellRequiringSavingThrow = request.IsSpellRequiringSavingThrow,
@@ -19,11 +20,12 @@ public static class AttackRequestExtensions
         CritMissDamage              = request.CritMissDamage,
     };
 
-    public static AttackInput ToInput(this DefaultAttackRequest request) => new()
+    public static AttackInput ToInput(this DefaultAttackRequest request, int targetScore = 0) => new()
     {
         AttackNumber                = 0,    // templates have no meaningful AttackNumber
         IsDefaultAttack             = false,
-        BaseToHit                   = request.BaseToHit ?? 0,
+        SkillRating                 = request.BaseToHit ?? 0,
+        TargetScore                 = targetScore,
         HasMAP                      = request.HasMAP,
         IsAgile                     = request.IsAgile,
         IsSpellRequiringSavingThrow = request.IsSpellRequiringSavingThrow,

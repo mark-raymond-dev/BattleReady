@@ -7,7 +7,8 @@ public class AttackInput
 
     public int AttackNumber { get; set; }
 
-    public int BaseToHit { get; set; }
+    public int SkillRating { get; set; }
+    public int TargetScore { get; set; }
 
     public string NormalHitDamage { get; set; } = string.Empty; 
 
@@ -28,7 +29,8 @@ public class AttackInput
     {
         AttackNumber                  = this.AttackNumber,
         IsDefaultAttack               = this.IsDefaultAttack,
-        BaseToHit                     = this.BaseToHit,
+        SkillRating                   = this.SkillRating,
+        TargetScore                   = this.TargetScore,
         HasMAP                        = this.HasMAP,
         IsAgile                       = this.IsAgile,
         IsSpellRequiringSavingThrow   = this.IsSpellRequiringSavingThrow,

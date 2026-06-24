@@ -52,7 +52,8 @@ public class CalculationService : ICalculationService
             IsDefaultAttack = attack.IsDefaultAttack,
             
             // Get these from the default.
-            BaseToHit = defaultAttack.BaseToHit,
+            SkillRating = defaultAttack.SkillRating,
+            TargetScore = defaultAttack.TargetScore,
             HasMAP = defaultAttack.HasMAP,
             IsAgile = defaultAttack.IsAgile,
             IsSpellRequiringSavingThrow = defaultAttack.IsSpellRequiringSavingThrow,
@@ -119,7 +120,7 @@ public class CalculationService : ICalculationService
             };
 
             // Calculate effective to-hit and defense values.
-            var effectiveToHit = effectiveAttack.BaseToHit;
+            var effectiveToHit = effectiveAttack.SkillRating;
             if (effectiveAttack.HasMAP)
             {
                 // Normal attack penalty is -5, unless you are using
@@ -135,10 +136,10 @@ public class CalculationService : ICalculationService
                 effectiveToHit += totalMapAdjustment;
             }
             attackResponse.EffectiveToHit = effectiveToHit;
-            attackResponse.EffectiveDefense = input.EnemyDefense;
+            attackResponse.EffectiveDefense = effectiveAttack.TargetScore;
 
             // Calculate chances for each degree of success based on to-hit and defense.
-            var hitChance = _hitChanceService.Calculate(effectiveToHit, input.EnemyDefense, input.Natural20Upgrades, input.Natural1Downgrades);
+            var hitChance = _hitChanceService.Calculate(effectiveToHit, effectiveAttack.TargetScore, input.Natural20Upgrades, input.Natural1Downgrades);
             attackResponse.CritHitChance = hitChance.CritHitChance;
             attackResponse.NormalHitChance = hitChance.NormalHitChance;
             attackResponse.NormalMissChance = hitChance.NormalMissChance;
