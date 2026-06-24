@@ -5,39 +5,44 @@ using BattleReady.Core.Features.Calculator.Models;
 public class HitChanceService : IHitChanceService
 {
 
+    #region Injected Services
+
+    private readonly IDegreeOfSuccessService _degreeOfSuccessService;
+
+    #endregion
+
+    #region Constructor
+
+    public HitChanceService(IDegreeOfSuccessService degreeOfSuccessService)
+    {
+        _degreeOfSuccessService = degreeOfSuccessService;
+    }
+
+    #endregion
+
     #region Methods
 
-    public HitChanceResponse Calculate(int toHit, int defense, bool natural20Upgrades = true, bool natural1Downgrades = true)
+    public HitChanceResponse Calculate(
+        int toHit,
+        int defense,
+        bool natural20Upgrades  = true,
+        bool natural1Downgrades = true)
     {
-        // Loop through every possible d20 roll (1 to 20) and
-        // count how many times each degree of success occurs.
-        int critMissCount = 0;
-        int missCount = 0;
-        int hitCount = 0;
-        int critHitCount = 0;
-        for (int d20 = 1; d20 <= 20; d20++)
-        {
-            var degreeOfSuccess = DegreeOfSuccessCalculator.GetDegreeOfSuccess(toHit, d20, defense, natural20Upgrades, natural1Downgrades);
-            switch (degreeOfSuccess)
-            {
-                case DegreeOfSuccess.CriticalHit: critHitCount++; break;
-                case DegreeOfSuccess.Hit: hitCount++; break;
-                case DegreeOfSuccess.Miss: missCount++; break;
-                case DegreeOfSuccess.CriticalMiss: critMissCount++; break;
-            }
-        }
+        var result = _degreeOfSuccessService.Calculate(
+            skillRating:        toHit,
+            targetScore:        defense,
+            natural20Upgrades:  natural20Upgrades,
+            natural1Downgrades: natural1Downgrades);
 
-        var hitChanceResponse = new HitChanceResponse
+        return new HitChanceResponse
         {
-            ToHit = toHit,
-            Defense = defense,
-            // Convert the counts into percentages (Each roll = 5%)            
-            CritMissChance = critMissCount * 0.05,
-            NormalMissChance = missCount * 0.05,
-            NormalHitChance = hitCount * 0.05,
-            CritHitChance = critHitCount * 0.05
+            ToHit            = toHit,
+            Defense          = defense,
+            CritMissChance   = result.CritFailChance,
+            NormalMissChance = result.NormalFailChance,
+            NormalHitChance  = result.NormalSuccessChance,
+            CritHitChance    = result.CritSuccessChance,
         };
-        return hitChanceResponse;
     }
 
     #endregion

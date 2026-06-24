@@ -4,7 +4,7 @@ namespace BattleReady.Tests.HitChance;
 
 public class HitChanceServiceTests
 {
-    private readonly HitChanceService _service = new();
+    private readonly HitChanceService _service = new(new DegreeOfSuccessService());
 
     [Fact]
     public void Calculate_ChancesSumToOneHundredPercent()
