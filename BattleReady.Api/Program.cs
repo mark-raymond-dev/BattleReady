@@ -68,6 +68,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<ICalculationService, CalculationService>();
 builder.Services.AddScoped<IHitChanceService, HitChanceService>();
 builder.Services.AddScoped<IParseDamageService, ParseDamageService>();
+builder.Services.AddScoped<ISpellSaveService, SpellSaveService>();
 builder.Services.AddScoped<IDegreeOfSuccessService, DegreeOfSuccessService>();
 builder.Services.AddScoped<RequestLoggingFilter>();
 
