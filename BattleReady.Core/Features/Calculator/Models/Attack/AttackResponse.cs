@@ -6,8 +6,8 @@ public class AttackResponse
     #region Properties
 
     public int AttackNumber { get; set; } 
-    public int EffectiveToHit { get; set; } 
-    public int EffectiveDefense { get; set; }
+    public int EffectiveSkillRating { get; set; } 
+    public int EffectiveTargetScore { get; set; }
     
     public double CritMissChance { get; set; }
     public double NormalMissChance { get; set; }

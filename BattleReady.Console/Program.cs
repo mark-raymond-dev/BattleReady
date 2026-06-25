@@ -18,7 +18,8 @@ var input = new CalculationInput
 var degreeOfSuccessService = new DegreeOfSuccessService();
 var parseDamageService = new ParseDamageService();
 var hitChanceService = new HitChanceService(degreeOfSuccessService);
-var calculationService = new CalculationService(hitChanceService, parseDamageService);
+var spellSaveService = new SpellSaveService(degreeOfSuccessService);
+var calculationService = new CalculationService(hitChanceService, spellSaveService, parseDamageService);
 
 // Call service and print out response.
 var response = calculationService.Calculate(input);

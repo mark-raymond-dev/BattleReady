@@ -34,4 +34,19 @@ public static class AttackRequestExtensions
         NormalMissDamage            = request.NormalMissDamage,
         CritMissDamage              = request.CritMissDamage,
     };
+
+    // SpellSaveRequest maps to SpellInput (a marker subclass of AttackInput).
+    // SpellInput's constructor pre-sets IsSpellRequiringSavingThrow = true and HasMAP = false.
+    // SkillRating = SaveBonus (the defender rolls this).
+    // TargetScore = SpellDc   (the caster's DC the defender must beat).
+    public static SpellInput ToSpellInput(this SpellSaveRequest request) => new()
+    {
+        AttackNumber    = request.AttackNumber,
+        SkillRating     = request.SaveBonus ?? 0,
+        TargetScore     = request.SpellDc   ?? 0,
+        NormalHitDamage = request.NormalHitDamage,
+        CritHitDamage   = request.CritHitDamage,
+        NormalMissDamage = request.NormalMissDamage,
+        CritMissDamage  = request.CritMissDamage,
+    };
 }

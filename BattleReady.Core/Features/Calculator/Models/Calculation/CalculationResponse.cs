@@ -25,7 +25,7 @@ public class CalculationResponse
         sb.Append($"\n\nCalculated at {CalculatedAt:u}\n\n");
         foreach (var ar in AttackResponses.OrderBy(ar => ar.AttackNumber))
         {
-            sb.AppendLine($"Attack {ar.AttackNumber}  .....  Eff To-Hit: {ar.EffectiveToHit}, Defense: {ar.EffectiveDefense}");
+            sb.AppendLine($"Attack {ar.AttackNumber}  .....  Eff Skill: {ar.EffectiveSkillRating}, Eff Tgt: {ar.EffectiveTargetScore}");
             sb.AppendLine($"% Chc (Dmg) [ CritHit: {ar.CritHitChance:P2} ({ar.AvgDmgCritHit:F2}), Hit: {ar.NormalHitChance:P2} ({ar.AvgDmgNormalHit:F2}), Miss: {ar.NormalMissChance:P2} ({ar.AvgDmgNormalMiss:F2}), CritMiss: {ar.CritMissChance:P2} ({ar.AvgDmgCritMiss:F2}) ]");
             sb.AppendLine($"Total Expected Dmg for this Attack: {ar.TotalExpectedDamage:F2}\n");
         }

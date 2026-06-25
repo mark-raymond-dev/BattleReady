@@ -8,15 +8,20 @@ public class CalculationService : ICalculationService
     #region Injected Services
 
     private readonly IHitChanceService _hitChanceService;
+    private readonly ISpellSaveService _spellSaveService;
     private readonly IParseDamageService _parseDamageService;
 
     #endregion
 
     #region Constructor
 
-    public CalculationService(IHitChanceService hitChanceService, IParseDamageService parseDamageService)
+    public CalculationService(
+        IHitChanceService hitChanceService,
+        ISpellSaveService spellSaveService, 
+        IParseDamageService parseDamageService)
     {
         _hitChanceService = hitChanceService;
+        _spellSaveService = spellSaveService;
         _parseDamageService = parseDamageService;
     }
 
@@ -73,10 +78,10 @@ public class CalculationService : ICalculationService
     private double DeriveAltDamage(double avgDmgNormalHit, string altAvgDmgExpression, double defaultAltAvgDmg = 0)
     {
         var normalizedExpression = altAvgDmgExpression.Trim().ToLower();
-        var halfKeywords = new[] { "half", "halved", "halve", "1/2", "50%" };
+        var halfKeywords = new[] { "half", "halved", "halve", "hlf", "1/2", "50%" };
         var doubleKeywords = new[] { "double", "doubled", "dbl", "2x", "200%" };
         var tripleKeywords = new[] { "triple", "tripled", "trp", "3x", "300%" };
-        var zeroKeywords = new[] { "0", "zero", "none" };
+        var zeroKeywords = new[] { "0", "zero", "none", "-" };
 
         bool isBlank = string.IsNullOrWhiteSpace(altAvgDmgExpression);
         bool isHalf = halfKeywords.Contains(normalizedExpression);
@@ -107,6 +112,8 @@ public class CalculationService : ICalculationService
                         .OrderBy(a => a.AttackNumber)
                         .ToList();
 
+        int mapEligibleAttacksSoFar = 0;
+
         // Iterate through each attack and calculate results, building up the response as we go.
         foreach (var attack in sortedAttacks)
         {
@@ -119,9 +126,11 @@ public class CalculationService : ICalculationService
                 AttackNumber = effectiveAttack.AttackNumber
             };
 
-            // Calculate effective to-hit and defense values.
-            var effectiveToHit = effectiveAttack.SkillRating;
-            if (effectiveAttack.HasMAP)
+            // Calculate effective skill rating (attack bonus or save bonus).
+            var effectiveSkillRating = effectiveAttack.SkillRating;
+
+            // MAP only applies to attack rolls, never spell saves.
+            if (!effectiveAttack.IsSpellRequiringSavingThrow && effectiveAttack.HasMAP)
             {
                 // Normal attack penalty is -5, unless you are using
                 // an agile weapon, in which case it is -4.
@@ -129,21 +138,49 @@ public class CalculationService : ICalculationService
 
                 // MAP penalty caps at the third attack in Pathfinder 2e — attacks 3, 4, 5, etc.
                 // all use the same penalty as attack 3 (i.e. 2 tiers past the first).
-                var attacksPastTheFirst = Math.Min(effectiveAttack.AttackNumber - 1, 2);
+                var attacksPastTheFirst = Math.Min(mapEligibleAttacksSoFar, 2);
 
                 // Determine the TOTAL penalty for this attack.
                 var totalMapAdjustment = mapAdjustment * attacksPastTheFirst;
-                effectiveToHit += totalMapAdjustment;
-            }
-            attackResponse.EffectiveToHit = effectiveToHit;
-            attackResponse.EffectiveDefense = effectiveAttack.TargetScore;
+                effectiveSkillRating += totalMapAdjustment;
 
-            // Calculate chances for each degree of success based on to-hit and defense.
-            var hitChance = _hitChanceService.Calculate(effectiveToHit, effectiveAttack.TargetScore, input.Natural20Upgrades, input.Natural1Downgrades);
-            attackResponse.CritHitChance = hitChance.CritHitChance;
-            attackResponse.NormalHitChance = hitChance.NormalHitChance;
-            attackResponse.NormalMissChance = hitChance.NormalMissChance;
-            attackResponse.CritMissChance = hitChance.CritMissChance;
+                // Increment the MAP-eligible attack counter AFTER computing this attack's penalty.
+                mapEligibleAttacksSoFar++;
+            }
+
+            // These are the effective
+            attackResponse.EffectiveSkillRating = effectiveSkillRating;
+            attackResponse.EffectiveTargetScore = effectiveAttack.TargetScore;
+
+
+            if (effectiveAttack.IsSpellRequiringSavingThrow)
+            {
+                // Calculate chances for each degree of success based on save bonus and caster's Spell DC.
+                var spellSaveResponse = _spellSaveService.Calculate(
+                    attackResponse.EffectiveSkillRating,
+                    attackResponse.EffectiveTargetScore,
+                    input.Natural20Upgrades,
+                    input.Natural1Downgrades);
+                
+                attackResponse.CritHitChance = spellSaveResponse.CritHitChance;
+                attackResponse.NormalHitChance = spellSaveResponse.NormalHitChance;
+                attackResponse.NormalMissChance = spellSaveResponse.NormalMissChance;
+                attackResponse.CritMissChance = spellSaveResponse.CritMissChance;
+            }
+            else
+            {
+                // Calculate chances for each degree of success based on to-hit and defense.
+                var hitChanceResponse = _hitChanceService.Calculate(
+                    attackResponse.EffectiveSkillRating,
+                    attackResponse.EffectiveTargetScore,
+                    input.Natural20Upgrades, 
+                    input.Natural1Downgrades);
+
+                attackResponse.CritHitChance = hitChanceResponse.CritHitChance;
+                attackResponse.NormalHitChance = hitChanceResponse.NormalHitChance;
+                attackResponse.NormalMissChance = hitChanceResponse.NormalMissChance;
+                attackResponse.CritMissChance = hitChanceResponse.CritMissChance;
+            }
 
             // Calculate average damage for each degree of success.
             var normalDamageParseResult = _parseDamageService.Calculate(effectiveAttack.NormalHitDamage);
