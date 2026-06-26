@@ -46,4 +46,49 @@ public class ExceptionHandlerTests : IClassFixture<ExceptionHandlerTestFactory>
         Assert.True(root.TryGetProperty("title", out var titleProp));
         Assert.False(string.IsNullOrWhiteSpace(titleProp.GetString()));
     }
+
+    [Fact]
+    public async Task NotFoundException_Returns404WithProblemDetails()
+    {
+        var response = await _client.GetAsync("/test/not-found");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        var root = JsonDocument.Parse(body).RootElement;
+
+        Assert.Equal(404, root.GetProperty("status").GetInt32());
+        Assert.Equal("Resource not found.", root.GetProperty("title").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
+    }
+
+    [Fact]
+    public async Task ValidationException_Returns422WithProblemDetails()
+    {
+        var response = await _client.GetAsync("/test/validation");
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        var root = JsonDocument.Parse(body).RootElement;
+
+        Assert.Equal(422, root.GetProperty("status").GetInt32());
+        Assert.Equal("Unprocessable entity.", root.GetProperty("title").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
+    }
+
+    [Fact]
+    public async Task DomainException_Returns400WithProblemDetails()
+    {
+        var response = await _client.GetAsync("/test/domain");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        var root = JsonDocument.Parse(body).RootElement;
+
+        Assert.Equal(400, root.GetProperty("status").GetInt32());
+        Assert.Equal("Bad request.", root.GetProperty("title").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
+    }
 }

@@ -9,6 +9,9 @@ using Serilog.Formatting.Compact;
 using Asp.Versioning;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using BattleReady.Core.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 
 // Set up Serilog. The message levels are, in order:
 // Verbose, Debug, Information, Warning, Error, Fatal.
@@ -101,7 +104,44 @@ else
 // recipe, construct it (recursively constructing anything it depends on too), and hand back the instance. 
 var app = builder.Build();
 
-app.UseExceptionHandler();  // used in conjunction with: builder.Services.AddProblemDetails();
+// used in conjunction with: builder.Services.AddProblemDetails();
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+        var exception = exceptionFeature?.Error;
+
+        // Translate domain exceptions to appropriate HTTP status codes, as
+        // well as corresponding titles. Everything else falls through to 500.
+        var statusCode = exception switch
+        {
+            NotFoundException       => StatusCodes.Status404NotFound,
+            ValidationException     => StatusCodes.Status422UnprocessableEntity,
+            DomainException         => StatusCodes.Status400BadRequest,
+            _                       => StatusCodes.Status500InternalServerError
+        };
+        var title = exception switch
+        {
+            NotFoundException   => "Resource not found.",
+            ValidationException => "Unprocessable entity.",
+            DomainException     => "Bad request.",
+            _                   => "An unexpected error occurred."
+        };
+
+        context.Response.StatusCode  = statusCode;
+        context.Response.ContentType = "application/problem+json";
+
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = statusCode,
+            title  = title,
+            detail = exception?.Message
+        });
+
+        await context.Response.WriteAsync(json);
+    });
+});
 
 // Auto-run migrations on startup
 if (!app.Environment.IsEnvironment("Testing"))
