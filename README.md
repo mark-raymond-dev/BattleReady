@@ -1,7 +1,7 @@
 # BattleReady
 
 A Pathfinder 2e combat calculator that computes expected damage per round across multiple attacks.
-Built as a portfolio project to demonstrate modern .NET development practices including clean architecture, dependency inversion, Entity Framework Core, REST API design, structured logging, API versioning, rate limiting, server-side caching, request correlation, and both unit and integration testing.
+Built as a portfolio project to demonstrate modern .NET development practices including clean architecture, dependency inversion, Entity Framework Core, REST API design, JWT authentication, structured logging, API versioning, rate limiting, server-side caching, request correlation, custom domain exception handling, and both unit and integration testing.
 
 ---
 
@@ -32,7 +32,36 @@ Health check: [https://battleready-api-b4h4brhga5dea5ay.westus3-01.azurewebsites
 
 ## API Endpoints
 
-All endpoints are versioned under `/api/v1/`. See [API Versioning](#api-versioning) below.
+All endpoints are versioned under `/api/v1/` or `/api/v2/`. See [API Versioning](#api-versioning) below.
+
+### `POST /api/v1/Auth/token`
+
+Returns a signed JWT for use with protected endpoints. Submit credentials in the request body; the token is valid for 60 minutes.
+
+**Example request:**
+
+```json
+{
+  "username": "battleready",
+  "password": "password123"
+}
+```
+
+**Example response:**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Include the returned token in the `Authorization` header of subsequent requests to protected endpoints:
+
+```
+Authorization: Bearer <token>
+```
+
+---
 
 ### `POST /api/v1/Calculator/calculate`
 
@@ -90,8 +119,8 @@ The `defaultAttack` object acts as a template. Concrete attacks with `"isDefault
   "attackResponses": [
     {
       "attackNumber": 1,
-      "effectiveToHit": 12,
-      "effectiveDefense": 19,
+      "effectiveSkillRating": 12,
+      "effectiveTargetScore": 19,
       "critHitChance": 0.2,
       "normalHitChance": 0.5,
       "normalMissChance": 0.25,
@@ -104,7 +133,7 @@ The `defaultAttack` object acts as a template. Concrete attacks with `"isDefault
     }
   ],
   "totalExpectedDamageAllAttacks": 8.55,
-  "calculatedAt": "2026-06-09T00:00:00Z"
+  "calculatedAt": "2026-06-29T00:00:00Z"
 }
 ```
 
@@ -132,6 +161,14 @@ Same calculation as the POST version but read-only — no logging. Parameters ar
   "critMissChance": 0.05
 }
 ```
+
+---
+
+### `POST /api/v2/hitchance/calculate` *(requires authentication)*
+
+API version 2 of the hit chance calculator. Functionally equivalent to v1 but requires a valid Bearer token in the `Authorization` header (see [Authentication](#authentication) below). The response drops the `toHit` and `defense` echo-back fields present in v1, returning only the calculated probability breakdown.
+
+This endpoint demonstrates the per-controller versioning strategy: v2 introduces a breaking change to one resource's contract without affecting any other endpoint.
 
 ---
 
@@ -216,6 +253,21 @@ When supplying `critHitDamage`, `normalMissDamage`, or `critMissDamage`, you can
 
 ---
 
+## Authentication
+
+The API uses **JWT (JSON Web Token)** bearer authentication on selected endpoints. JWT is a standard for self-contained, digitally signed tokens: the server issues a token containing claims (user identity, expiry time) and signs it with a secret key. On protected endpoints, the server validates the signature on every request without any database lookup — the token itself carries all the information needed.
+
+To access a protected endpoint:
+
+1. Call `POST /api/v1/Auth/token` with valid credentials to obtain a token
+2. Include the token in subsequent requests: `Authorization: Bearer <token>`
+
+**v1 endpoints are open** — no authentication required, preserving backward compatibility for existing consumers. **v2 endpoints require authentication**, reflecting a deliberate versioning strategy: breaking changes to the security contract are introduced in a new version rather than applied retroactively.
+
+In production, the signing key would be stored in Azure Key Vault or as an environment variable — never in source control.
+
+---
+
 ## Validation
 
 Request validation is handled at the API layer via `IValidatableObject` and `[DataAnnotations]`, before any domain logic runs.
@@ -235,11 +287,11 @@ All validation errors return `400 Bad Request` with a structured RFC 7807 `Valid
 
 ## API Versioning
 
-All endpoints are versioned via the URL path (`/api/v1/...`), implemented with the `Asp.Versioning` package. Each controller declares its version with `[ApiVersion("1.0")]`, and the version is resolved from the route itself (`api/v{version:apiVersion}/[controller]`).
+All endpoints are versioned via the URL path (`/api/v1/...`, `/api/v2/...`), implemented with the `Asp.Versioning` package. Each controller declares its version with `[ApiVersion("1.0")]` or `[ApiVersion("2.0")]`, and the version is resolved from the route itself (`api/v{version:apiVersion}/[controller]`).
 
 Versioning is applied per-controller rather than globally — if a future change requires a breaking update to one resource's contract (say, `HitChance`), only that controller moves to `/api/v2/HitChance/...` while every other endpoint stays on v1, unaffected.
 
-Swagger UI reflects the current version via a "Select a definition" dropdown, which will list each active version once more than one exists.
+Swagger UI reflects the current version via a "Select a definition" dropdown, which lists each active version.
 
 ---
 
@@ -257,6 +309,15 @@ The API returns [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html
 - **Rate limit exceeded** returns `429 Too Many Requests`
 - **Not-found responses** return a structured `ProblemDetails` body
 - **Unhandled exceptions** return `500 Internal Server Error` with a structured `ProblemDetails` body via a global exception handler (`AddProblemDetails()` + `UseExceptionHandler()`), rather than a raw stack trace
+
+**Custom domain exception types** — `BattleReady.Core` defines a hierarchy of exception types (`DomainException`, `NotFoundException`, `ValidationException`) that represent domain-level error conditions with no knowledge of HTTP. The API layer's global exception handler translates these to appropriate status codes in a single place:
+
+| Exception type | HTTP status |
+|---|---|
+| `NotFoundException` | `404 Not Found` |
+| `ValidationException` | `422 Unprocessable Entity` |
+| `DomainException` (base) | `400 Bad Request` |
+| Any other exception | `500 Internal Server Error` |
 
 This gives any API consumer one consistent, machine-readable error shape to parse, regardless of failure mode.
 
@@ -277,30 +338,39 @@ This gives any API consumer one consistent, machine-readable error shape to pars
 ```
 BattleReady.slnx
 ├── BattleReady.Core/              # Shared class library — models and services
+│   ├── Exceptions/                # DomainException (abstract), NotFoundException, ValidationException
 │   └── Features/Calculator/
 │       ├── Models/                # Input/response models
 │       │   └── Shared/            # DegreeOfSuccess enum, DegreeOfSuccessCalculator (pure static logic)
-│       └── Services/              # CalculationService, HitChanceService, ParseDamageService
-│                                  #   + ICalculationService, IHitChanceService, IParseDamageService
+│       └── Services/              # CalculationService, HitChanceService, SpellSaveService,
+│                                  #   ParseDamageService, DegreeOfSuccessService
+│                                  #   + corresponding interfaces
 ├── BattleReady.Api/               # ASP.NET Core Web API
-│   ├── Controllers/               # CalculatorController, HitChanceController, ParseDamageController, LogsController
+│   ├── Controllers/               # CalculatorController, HitChanceController, HitChanceV2Controller,
+│   │                              #   ParseDamageController, LogsController, AuthController
 │   ├── Filters/                   # RequestLoggingFilter (IAsyncActionFilter — DB logging on POST actions)
 │   ├── Mapping/                   # Extension methods: *Request.ToInput(), ApiRequestLog.ToDto()
 │   ├── Middleware/                # RequestLoggingMiddleware (CorrelationId → Serilog LogContext)
-│   ├── Models/Requests/           # AttackRequest, DefaultAttackRequest, CalculationRequest, etc.
+│   ├── Models/Requests/           # AttackRequest, DefaultAttackRequest, CalculationRequest,
+│   │                              #   SpellSaveRequest, HitChanceRequest, LoginRequest, etc.
 │   ├── Models/Responses/          # LogsResponse, ApiRequestLogDto (decoupled from EF entity)
-│   └── Program.cs                 # DI, Serilog bootstrap, versioning, health checks, rate limiting, Problem Details
+│   └── Program.cs                 # DI, Serilog bootstrap, JWT auth, versioning, health checks,
+│                                  #   rate limiting, global exception handler, Problem Details
 ├── BattleReady.Data/              # EF Core data access layer
 │   ├── Entities/                  # ApiRequestLog entity (bounded string columns on Endpoint, RequestBody)
 │   ├── Migrations/                # EF Core migrations (auto-applied on startup via db.Database.Migrate())
 │   └── AppDbContext.cs
 ├── BattleReady.Console/           # Original console prototype
-└── BattleReady.Tests/             # xUnit test project — 61 tests total
+└── BattleReady.Tests/             # xUnit test project — 89 tests total
     ├── HitChance/                 # HitChanceServiceTests, DegreeOfSuccessCalculatorTests ([Theory]-based)
     ├── ParseDamage/               # ParseDamageServiceTests
-    ├── Calculator/                # CalculationServiceTests — Moq-based unit tests of orchestration logic
+    ├── SpellSave/                 # SpellSaveServiceTests
+    ├── Calculator/                # CalculationServiceTests, CalculationServiceSpellSaveTests
+    │                              #   — Moq-based unit tests of orchestration logic
     └── Integration/               # Full HTTP-stack tests via WebApplicationFactory + in-memory database
-                                   #   Covers: Calculator, HitChance, ParseDamage, Logs, health check, 500 ProblemDetails
+                                   #   Covers: Calculator, HitChance, HitChanceV2, ParseDamage, Logs,
+                                   #   Auth (JWT token issuance + protected endpoint), health check,
+                                   #   global exception handler (500, 404, 422, 400 domain exceptions)
 ```
 
 ---
@@ -309,7 +379,11 @@ BattleReady.slnx
 
 **Layer separation** — `BattleReady.Core` has zero knowledge of the API or database layers. Dependency arrows always point inward: Api → Core, Data → Core, never the reverse.
 
-**Dependency Inversion** — Controllers and `CalculationService` depend on interfaces (`IHitChanceService`, `IParseDamageService`, `ICalculationService`), not concrete classes. This enables `CalculationServiceTests` to use Moq to mock both dependencies and verify orchestration logic in isolation, without depending on the real hit-chance or damage-parsing math.
+**Dependency Inversion** — Controllers and `CalculationService` depend on interfaces (`IHitChanceService`, `IParseDamageService`, `ICalculationService`, `ISpellSaveService`), not concrete classes. This enables `CalculationServiceTests` to use Moq to mock all dependencies and verify orchestration logic in isolation, without depending on the real hit-chance or damage-parsing math.
+
+**Custom domain exception types** — `BattleReady.Core` defines an exception vocabulary (`DomainException`, `NotFoundException`, `ValidationException`) that expresses domain-level error conditions without any knowledge of HTTP. Core services throw these when something goes wrong; the API layer's global exception handler intercepts them in one place and translates them to appropriate HTTP status codes. This keeps the translation logic centralized rather than scattered across every controller action.
+
+**JWT authentication** — `POST /api/v1/Auth/token` issues signed JWTs containing user identity claims. The server validates the token signature on each request using a shared secret — no session storage or database lookup required. v1 endpoints remain open for backward compatibility; v2 endpoints require authentication, making the security boundary explicit in the API version rather than buried in middleware configuration.
 
 **Request/Input separation** — Request models (`*Request`) live in the API layer with validation attributes and `IValidatableObject`. Core input models (`*Input`) are plain C# with no framework dependencies. Controllers map between them via extension methods in `Mapping/`.
 
@@ -329,9 +403,9 @@ BattleReady.slnx
 
 **Auto-migrations** — `db.Database.Migrate()` runs on startup. Schema changes deploy automatically with the code; no manual SQL steps are required.
 
-**Secure secrets** — The production connection string is stored as an Azure App Service environment variable, never in source code or `appsettings.json`.
+**Secure secrets** — The production connection string and JWT signing key are stored as Azure App Service environment variables, never in source code or `appsettings.json`.
 
-**CI/CD pipeline** — GitHub Actions builds, runs all 61 tests, and deploys on every push to `master`. A failing test blocks deployment.
+**CI/CD pipeline** — GitHub Actions builds, runs all 89 tests, and deploys on every push to `master`. A failing test blocks deployment.
 
 ---
 
@@ -364,7 +438,7 @@ Structured logs are written to the console and to `logs/log-{date}.json` (relati
 
 **Firing requests locally** — the repo includes `BattleReady.Api/BattleReady.Api.http` with pre-built requests for every endpoint. Install the [REST Client extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) for VS Code, start the API, and click "Send Request" above any block.
 
-To run all 61 tests:
+To run all 89 tests:
 
 ```bash
 dotnet test
@@ -379,6 +453,7 @@ dotnet test
 - Entity Framework Core 10 with SQL Server
 - Swashbuckle (Swagger / OpenAPI)
 - Asp.Versioning (URL-based API versioning)
+- Microsoft.AspNetCore.Authentication.JwtBearer (JWT bearer authentication)
 - Microsoft.AspNetCore.RateLimiting (fixed-window rate limiting)
 - Microsoft.Extensions.Caching.Memory (server-side IMemoryCache on GET endpoints)
 - Serilog (structured JSON logging — console + rolling file sinks)
