@@ -11,7 +11,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using BattleReady.Core.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // Set up Serilog. The message levels are, in order:
 // Verbose, Debug, Information, Warning, Error, Fatal.
@@ -47,6 +49,23 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
+
+// JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
 
 // Rate limiting — fixed window policy applied globally.
 // Exemptions for /health and Swagger are handled at the middleware/route level below.
@@ -169,6 +188,7 @@ app.UseRateLimiter();
 app.UseSwagger();
 app.UseSwaggerUI(); // Swagger registers routes before MapControllers() line below, therefore doesn't need explicit exemption
 app.UseHttpsRedirection();
+app.UseAuthentication(); // Must come before app.UseAuthorization()
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("fixed"); // applies fixed window policy to all controller endpoints
 app.MapHealthChecks("/health").DisableRateLimiting(); // explicit exemption for the health endpoint

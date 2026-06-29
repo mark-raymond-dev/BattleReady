@@ -5,6 +5,7 @@ using BattleReady.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BattleReady.Api.Controllers;
 
@@ -23,6 +24,7 @@ public class HitChanceV2Controller : ControllerBase
     }
 
     [HttpPost("calculate")]
+    [Authorize]
     [ServiceFilter(typeof(RequestLoggingFilter))]
     public ActionResult<HitChanceV2Response> Calculate([FromBody] HitChanceRequest request)
     {
